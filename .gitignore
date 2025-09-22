@@ -1,0 +1,20 @@
+# --- Vagrant ---
+.vagrant/
+*.box
+
+# --- Virtual machine artifacts ---
+*.log
+*.retry
+
+# --- OS-specific junk ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# --- IDE/Editor settings ---
+.idea/
+.vscode/
+
+# Secrets
+secrets.rb
