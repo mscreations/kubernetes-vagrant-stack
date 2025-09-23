@@ -1,0 +1,33 @@
+---
+- name: Install packages with Arkade
+  hosts: all
+  become: true
+  vars:
+    system_packages:
+      - containerd
+    packages:
+      - yq          # Lightweight and flexible CLI YAML processor
+      - fzf         # Fuzzy finder
+      - helm        # Helm install tool
+      - jq          # Lightweight and flexible CLI JSON processor
+      - k9s         # Provides a terminal UI to interact with Kubernetes Cluster
+      - krew        # Package manager for kubectl plugins
+      - kubecolor   # kubectl replacement used to add colors to output
+      - kubectl     # kubectl - duh
+      - kubectx     # Faster way to switch contexts
+      - kubens      # Switch between namespaces
+      - nerdctl     # CLI for containerd
+      - dive       # A tool for exploring each layer in a docker image
+      
+  tasks:
+    - name: Install system packages
+      ansible.builtin.command: arkade system install {{ item }}
+      with_items: "{{ system_packages }}"
+
+    - name: Install other packages
+      ansible.builtin.command: arkade get {{ item }}
+      with_items: "{{ packages }}"
+
+
+      
+      

@@ -22,3 +22,5 @@ secrets.rb
 # Do not include ansible scripts in customize directory
 customize/*.yml
 customize/*.yaml
+
+certificates/

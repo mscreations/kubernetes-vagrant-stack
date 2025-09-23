@@ -1,0 +1,49 @@
+---
+- name: Prepare system for Kubernetes
+  hosts: all
+  become: true
+  tasks:
+
+    - name: Disable and turn off SWAP - remove from fstab
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '.*swap.*'
+        replace: ''
+      notify: disable swap
+
+    - name: Disable swap immediately
+      ansible.builtin.command: swapoff -a
+      when: ansible_swaptotal_mb | int > 0
+
+    - name: Stop and disable firewall
+      ansible.builtin.systemd:
+        name: ufw
+        enabled: false
+        state: stopped
+      ignore_errors: true
+
+    - name: Load kernel modules
+      community.general.modprobe:
+        name: "{{ item }}"
+        persistent: present
+        state: present
+      with_items:
+        - overlay
+        - br_netfilter
+
+    - name: Add kernel sysctl settings for Kubernetes
+      ansible.posix.sysctl:
+        name: "{{ item }}"
+        value: "1"
+        sysctl_set: true
+        state: present
+        reload: true
+      with_items:
+        - net.bridge.bridge-nf-call-ip6tables
+        - net.bridge.bridge-nf-call-iptables
+        - net.ipv4.ip_forward
+
+  handlers:
+    - name: disable swap
+      ansible.builtin.command: swapoff -a
+      when: ansible_swaptotal_mb | int > 0

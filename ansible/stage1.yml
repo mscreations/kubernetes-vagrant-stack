@@ -1,0 +1,16 @@
+---
+- name: Stage 1
+  hosts: all
+  become: true
+
+- name: Install Neovim
+  ansible.builtin.import_playbook: neovim.yml
+
+- name: Install Arkade
+  ansible.builtin.import_playbook: arkade.yml
+
+- name: Prepare system for Kubernetes
+  ansible.builtin.import_playbook: prepare.yml
+
+- name: Install arkade packages
+  ansible.builtin.import_playbook: arkade-installs.yml
