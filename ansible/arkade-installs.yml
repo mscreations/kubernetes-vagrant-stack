@@ -22,10 +22,12 @@
   tasks:
     - name: Install system packages
       ansible.builtin.command: arkade system install {{ item }}
+      retries: 5
       with_items: "{{ system_packages }}"
 
     - name: Install other packages
       ansible.builtin.command: arkade get {{ item }}
+      retries: 5
       with_items: "{{ packages }}"
 
 
