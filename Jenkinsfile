@@ -35,7 +35,7 @@ pipeline {
         }
         stage('Run Vagrant') {
             steps {
-                bat "vagrant up"
+                bat "vagrant up --provision"    // Ensure provisioners are rerun.
             }
         }
     }
