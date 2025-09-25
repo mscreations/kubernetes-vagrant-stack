@@ -1,13 +1,6 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-require_relative '../../Kubernetes/secrets.rb'
-include Secrets
-include Constants
-
-ENV['VAGRANT_FORCE_COLOR'] = 'yes'
-ENV['VAGRANT_INSTALL_LOCAL_PLUGINS'] = 'yes'
-
 # Field names for servers array
 NODE_NAME = 0
 MAX_MEMORY = 1
@@ -18,17 +11,17 @@ MODE = 5
 
 j = 0
 servers = Array.new
-(0..(Constants::MASTER_NODES_COUNT - 1)).each do |i|
+(0..(ENV['MASTER_NODES_COUNT'] - 1)).each do |i|
   if i == 0
     mode = "init"
   else
     mode = "master"
   end
-  servers.push(["kmaster#{i+1}", Constants::MASTER_MAX_MEMORY, Constants::MASTER_MAX_CPUS, "00155d01020#{j}", "#{Constants::NETWORK_PREFIX}.20#{j + 1}", mode])
+  servers.push(["kmaster#{i+1}", ENV['MASTER_MAX_MEMORY'], ENV['MASTER_MAX_CPUS'], "00155d01020#{j}", "#{ENV['NETWORK_PREFIX']}.20#{j + 1}", mode])
   j += 1
 end
-(0..(Constants::WORKER_NODES_COUNT - 1)).each do |i|
-    servers.push(["kworker#{i+1}", Constants::WORKER_MAX_MEMORY, Constants::WORKER_MAX_CPUS, "00155d01020#{j}", "#{Constants::NETWORK_PREFIX}.20#{j + 1}", "worker"])
+(0..(ENV['WORKER_NODES_COUNT'] - 1)).each do |i|
+    servers.push(["kworker#{i+1}", ENV['WORKER_MAX_MEMORY'], ENV['WORKER_MAX_CPUS'], "00155d01020#{j}", "#{ENV['NETWORK_PREFIX']}.20#{j + 1}", "worker"])
     j += 1
 end
 
@@ -41,14 +34,11 @@ servers.each do |server|
   puts server.map { |v| v.to_s.ljust(16) }.join("| ")
 end
 
-# Ensure secrets are listed as sensitive in logs
-sensitive_values = Secrets.constants.map { |const| Secrets.const_get(const) }
-
 Vagrant.configure("2") do |config|
   config.vagrant.sensitive = sensitive_values
 
-  config.vm.box = Constants::VAGRANT_BOX
-  config.vm.synced_folder ".", "/vagrant", mount_options: ["uid=1000", "gid=1000"], smb_username: Secrets::DOMAIN_USER, smb_password: Secrets::DOMAIN_PASSWORD
+  config.vm.box = ENV['VAGRANT_BOX']
+  config.vm.synced_folder ".", "/vagrant", mount_options: ["uid=1000", "gid=1000"], smb_username: ENV['DOMAIN_USER'], smb_password: ENV['DOMAIN_PASSWORD']
 
   # Run customization ansible scripts for all hosts (scripts not in git)
   # These scripts setup the customized shell that has my specific preferences
@@ -68,7 +58,7 @@ Vagrant.configure("2") do |config|
   servers.each do |server|
     config.vm.define server[NODE_NAME] do |node|
       node.vm.network "public_network", bridge: "LAN"
-      node.vm.hostname = "#{server[NODE_NAME]}.#{Secrets::DOMAIN}"
+      node.vm.hostname = "#{server[NODE_NAME]}.#{ENV['DOMAIN']}"
 
       if server[MODE] == "worker"
         node.vm.disk :disk, size: "100GB", name: "#{server[NODE_NAME]}-disk-1"
@@ -93,10 +83,10 @@ Vagrant.configure("2") do |config|
 
         # Manually add in DHCP reservation for VM
         override.trigger.after :'VagrantPlugins::HyperV::Action::Import', type: :action do |trigger|
-          trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{Secrets::DOMAIN} -ScopeId #{Constants::NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{Secrets::DHCP_SERVER} -Username #{Secrets::DOMAIN_USER} -Password #{Secrets::DOMAIN_PASSWORD}"}
+          trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{ENV['NETWORK_PREFIX']}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']}"}
         end
         override.trigger.before :'VagrantPlugins::HyperV::Action::DeleteVM', type: :action do |trigger|
-          trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{Secrets::DOMAIN} -ScopeId #{Constants::NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{Secrets::DHCP_SERVER} -Username #{Secrets::DOMAIN_USER} -Password #{Secrets::DOMAIN_PASSWORD} -RemoveReservation"}
+          trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{ENV['NETWORK_PREFIX']}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']} -RemoveReservation"}
         end
       end
     end

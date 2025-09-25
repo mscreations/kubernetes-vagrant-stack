@@ -6,6 +6,7 @@ pipeline {
     environment {
         VAGRANT_DOTFILE_PATH='D:\\Jenkins\\.vagrant'
         VAGRANT_FORCE_COLOR=1
+        VAGRANT_INSTALL_LOCAL_PLUGINS=1
                     
     }
     triggers {
@@ -35,7 +36,7 @@ pipeline {
                 withInfisical(
                     configuration: [
                         infisicalCredentialId: 'infisical', 
-                        infisicalEnvironmentSlug: 'prod', 
+                        infisicalEnvironmentSlug: 'dev', 
                         infisicalProjectSlug: 'homelab-b-h-sw', 
                         infisicalUrl: 'https://app.infisical.com'
                     ],
@@ -46,7 +47,16 @@ pipeline {
                                 [infisicalKey: 'DOMAIN_PASSWORD'], 
                                 [infisicalKey: 'CERT_EMAIL'], 
                                 [infisicalKey: 'DOMAIN'], 
-                                [infisicalKey: 'DHCP_SERVER']
+                                [infisicalKey: 'DHCP_SERVER'],
+                                [infisicalKey: 'MASTER_MAX_CPUS'],
+                                [infisicalKey: 'MASTER_MAX_MEMORY'],
+                                [infisicalKey: 'MASTER_NODES_COUNT'],
+                                [infisicalKey: 'NETWORK_PREFIX'],
+                                [infisicalKey: 'POD_NETWORK'],
+                                [infisicalKey: 'VAGRANT_BOX'],
+                                [infisicalKey: 'WORKER_MAX_CPUS'],
+                                [infisicalKey: 'WORKER_MAX_MEMORY'],
+                                [infisicalKey: 'WORKER_NODES_COUNT']
                             ]
                         )
                     ]
