@@ -165,7 +165,7 @@
     ######################################################################
     - name: Install latest nerdctl
       ansible.builtin.unarchive:
-        src: "https://github.com/containerd/nerdctl/releases/download/{{ latest_versions.nerdctl }}/nerdctl-{{ latest_versions.nerdctl }}-linux-amd64.tar.gz"
+        src: "https://github.com/containerd/nerdctl/releases/download/{{ latest_versions.nerdctl }}/nerdctl-{{ latest_versions.nerdctl | regex_replace('^v','')  }}-linux-amd64.tar.gz"
         dest: "{{ bin_dir }}"
         remote_src: true
         mode: '0755'
