@@ -10,7 +10,6 @@
 
     github_releases:
       yq: "https://api.github.com/repos/mikefarah/yq/releases/latest"
-      fzf: "https://api.github.com/repos/junegunn/fzf/releases/latest"
       helm: "https://api.github.com/repos/helm/helm/releases/latest"
       jq: "https://api.github.com/repos/jqlang/jq/releases/latest"
       k9s: "https://api.github.com/repos/derailed/k9s/releases/latest"
@@ -63,16 +62,6 @@
       ansible.builtin.get_url:
         url: "https://github.com/mikefarah/yq/releases/download/{{ latest_versions.yq }}/yq_linux_amd64"
         dest: "{{ bin_dir }}/yq"
-        mode: '0755'
-
-    ######################################################################
-    # Install fzf
-    ######################################################################
-    - name: Install latest fzf
-      ansible.builtin.unarchive:
-        src: "https://github.com/junegunn/fzf/releases/download/{{ latest_versions.fzf }}/fzf-{{ latest_versions.fzf | regex_replace('^v','') }}-linux_amd64.tar.gz"
-        dest: "{{ bin_dir }}"
-        remote_src: true
         mode: '0755'
 
     ######################################################################
