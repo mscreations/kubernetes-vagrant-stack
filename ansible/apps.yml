@@ -111,6 +111,7 @@
         dest: "{{ bin_dir }}"
         remote_src: true
         mode: '0755'
+      creates: "{{ bin_dir }}/k9s"
 
     ######################################################################
     # Install krew
@@ -144,6 +145,7 @@
         src: /tmp/kubecolor.tar.gz
         dest: "{{ bin_dir }}"
         remote_src: true
+      creates: "{{ bin_dir }}/kubecolor"
 
     ######################################################################
     # Install kubectx and kubens (same repo)
@@ -179,3 +181,4 @@
         dest: "{{ bin_dir }}"
         remote_src: true
         mode: '0755'
+      creates: "{{ bin_dir }}/dive"
