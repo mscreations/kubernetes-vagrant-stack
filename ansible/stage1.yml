@@ -12,5 +12,8 @@
 - name: Prepare system for Kubernetes
   ansible.builtin.import_playbook: prepare.yml
 
+- name: Install containerd
+  ansible.builtin.import_playbook: containerd.yml
+
 - name: Install arkade packages
   ansible.builtin.import_playbook: arkade-installs.yml

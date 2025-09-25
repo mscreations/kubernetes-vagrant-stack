@@ -1,0 +1,9 @@
+---
+- name: Install containerd
+  hosts: all
+  become: true
+  roles:
+    - role: geerlingguy.containerd
+      vars:
+        containerd_config_cgroup_driver_systemd: true
+  

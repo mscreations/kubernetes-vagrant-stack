@@ -3,8 +3,6 @@
   hosts: all
   become: true
   vars:
-    system_packages:
-      - containerd
     packages:
       - yq          # Lightweight and flexible CLI YAML processor
       - fzf         # Fuzzy finder
@@ -20,11 +18,6 @@
       - dive       # A tool for exploring each layer in a docker image
       
   tasks:
-    - name: Install system packages
-      ansible.builtin.command: arkade system install {{ item }}
-      retries: 5
-      with_items: "{{ system_packages }}"
-
     - name: Install other packages
       ansible.builtin.command: arkade get {{ item }}
       retries: 5

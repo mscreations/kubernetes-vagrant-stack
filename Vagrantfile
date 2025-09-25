@@ -54,7 +54,7 @@ Vagrant.configure("2") do |config|
   
   config.vm.provision "ansible_local" do |ansible|
     ansible.playbook          = "ansible/stage1.yml"
-    # ansible.galaxy_role_file  = "ansible/requirements.yml"
+    ansible.galaxy_role_file  = "ansible/requirements.yml"
   end
   
   # Run customization ansible scripts for all hosts (scripts not in git)
