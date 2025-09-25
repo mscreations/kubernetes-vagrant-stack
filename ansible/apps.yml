@@ -111,6 +111,7 @@
         dest: "{{ bin_dir }}"
         remote_src: true
         mode: '0755'
+        creates: "{{ bin_dir }}/k9s"
 
     ######################################################################
     # Install krew

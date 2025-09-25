@@ -50,20 +50,21 @@ Vagrant.configure("2") do |config|
   config.vm.box = Constants::VAGRANT_BOX
   config.vm.synced_folder ".", "/vagrant", mount_options: ["uid=1000", "gid=1000"], smb_username: Secrets::DOMAIN_USER, smb_password: Secrets::DOMAIN_PASSWORD
 
-  # Run customization ansible scripts for all hosts that are stored in git
-  
-  config.vm.provision "ansible_local" do |ansible|
-    ansible.playbook          = "ansible/stage1.yml"
-    ansible.galaxy_role_file  = "ansible/requirements.yml"
-  end
-  
   # Run customization ansible scripts for all hosts (scripts not in git)
+  # These scripts setup the customized shell that has my specific preferences
+  # Needs to be completed prior to stage 1 as it will patch the profile there.
   Dir.glob("customize/*.y{a,}ml").each do |playbook|
     config.vm.provision "ansible_local" do |ansible|
       ansible.playbook = playbook
     end
   end
 
+  # Run customization ansible scripts for all hosts that are stored in git
+  config.vm.provision "ansible_local" do |ansible|
+    ansible.playbook          = "ansible/stage1.yml"
+    ansible.galaxy_role_file  = "ansible/requirements.yml"
+  end
+  
   servers.each do |server|
     config.vm.define server[NODE_NAME] do |node|
       node.vm.network "public_network", bridge: "LAN"
