@@ -23,6 +23,13 @@ pipeline {
                 ])
             }
         }
+        stage('Populate customization directory') {
+            steps {
+                powershell """
+                    Copy-Item -Path '..\\..\\Kubernetes\\customize\\*' -Destination 'customize\\' -Recurse -Force
+                """
+            }
+        }
         stage('Run Vagrant') {
             steps {
                 bat "vagrant up --provision"    // Ensure provisioners are rerun.
