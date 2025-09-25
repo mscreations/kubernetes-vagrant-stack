@@ -23,5 +23,5 @@
     - name: Expire vagrant password if default hash
       ansible.builtin.user:
         name: vagrant
-        password_expire: true
+        expires: 1
       when: vagrant_shadow_entry == vagrant_default_hash
