@@ -1,0 +1,181 @@
+- name: Install Kubernetes & CLI tools
+  hosts: all
+  become: true
+  vars:
+    bin_dir: /usr/local/bin
+
+    # Kubectl must be pinned
+    kubectl_version: "v1.34.1"
+    kubectl_url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+
+    github_releases:
+      yq: "https://api.github.com/repos/mikefarah/yq/releases/latest"
+      fzf: "https://api.github.com/repos/junegunn/fzf/releases/latest"
+      helm: "https://api.github.com/repos/helm/helm/releases/latest"
+      jq: "https://api.github.com/repos/jqlang/jq/releases/latest"
+      k9s: "https://api.github.com/repos/derailed/k9s/releases/latest"
+      krew: "https://api.github.com/repos/kubernetes-sigs/krew/releases/latest"
+      kubecolor: "https://api.github.com/repos/hidetatz/kubecolor/releases/latest"
+      kubectx: "https://api.github.com/repos/ahmetb/kubectx/releases/latest"
+      nerdctl: "https://api.github.com/repos/containerd/nerdctl/releases/latest"
+      dive: "https://api.github.com/repos/wagoodman/dive/releases/latest"
+
+  tasks:
+
+    ######################################################################
+    # Kubectl (pinned version)
+    ######################################################################
+    - name: Install kubectl (specific version)
+      ansible.builtin.get_url:
+        url: "{{ kubectl_url }}"
+        dest: "{{ bin_dir }}/kubectl"
+        mode: '0755'
+
+    ######################################################################
+    # Dynamic installers for GitHub-hosted tools
+    ######################################################################
+    - name: Fetch latest release info
+      ansible.builtin.uri:
+        url: "{{ item.value }}"
+        return_content: true
+        headers:
+          Accept: "application/vnd.github.v3+json"
+      loop: "{{ github_releases | dict2items }}"
+      register: gh_releases
+      changed_when: false
+
+    - name: Set facts for download URLs
+      ansible.builtin.set_fact:
+        latest_versions: >-
+          {{
+            dict(gh_releases.results | map(attribute='item.key') |
+                 zip(gh_releases.results | map(attribute='json.tag_name')))
+          }}
+
+    - name: Debug release versions
+      ansible.builtin.debug:
+        var: latest_versions
+
+    ######################################################################
+    # Install yq
+    ######################################################################
+    - name: Install latest yq
+      ansible.builtin.get_url:
+        url: "https://github.com/mikefarah/yq/releases/download/{{ latest_versions.yq }}/yq_linux_amd64"
+        dest: "{{ bin_dir }}/yq"
+        mode: '0755'
+
+    ######################################################################
+    # Install fzf
+    ######################################################################
+    - name: Install latest fzf
+      ansible.builtin.unarchive:
+        src: "https://github.com/junegunn/fzf/releases/download/{{ latest_versions.fzf }}/fzf-{{ latest_versions.fzf | regex_replace('^v','') }}-linux_amd64.tar.gz"
+        dest: "{{ bin_dir }}"
+        remote_src: true
+        mode: '0755'
+
+    ######################################################################
+    # Install helm
+    ######################################################################
+    - name: Install latest helm
+      ansible.builtin.unarchive:
+        src: "https://get.helm.sh/helm-{{ latest_versions.helm }}-linux-amd64.tar.gz"
+        dest: /tmp
+        remote_src: true
+      register: helm_extract
+
+    - name: Move helm binary
+      ansible.builtin.copy:
+        src: "/tmp/linux-amd64/helm"
+        dest: "{{ bin_dir }}/helm"
+        mode: '0755'
+        remote_src: true
+      when: helm_extract is changed
+
+    ######################################################################
+    # Install jq
+    ######################################################################
+    - name: Install latest jq
+      ansible.builtin.get_url:
+        url: "https://github.com/jqlang/jq/releases/download/{{ latest_versions.jq }}/jq-linux-amd64"
+        dest: "{{ bin_dir }}/jq"
+        mode: '0755'
+
+    ######################################################################
+    # Install k9s
+    ######################################################################
+    - name: Install latest k9s
+      ansible.builtin.unarchive:
+        src: "https://github.com/derailed/k9s/releases/download/{{ latest_versions.k9s }}/k9s_Linux_amd64.tar.gz"
+        dest: "{{ bin_dir }}"
+        remote_src: true
+        mode: '0755'
+
+    ######################################################################
+    # Install krew
+    ######################################################################
+    - name: Install latest krew (bootstrap installer)
+      ansible.builtin.unarchive:
+        src: "https://github.com/kubernetes-sigs/krew/releases/download/{{ latest_versions.krew }}/krew-linux_amd64.tar.gz"
+        dest: /tmp
+        remote_src: true
+      register: krew_extract
+
+    - name: Move krew binary
+      ansible.builtin.copy:
+        src: "/tmp/krew-linux_amd64"
+        dest: "{{ bin_dir }}/krew"
+        mode: '0755'
+        remote_src: true
+      when: krew_extract is changed
+
+    ######################################################################
+    # Install kubecolor
+    ######################################################################
+    - name: Install latest kubecolor
+      ansible.builtin.get_url:
+        url: "https://github.com/hidetatz/kubecolor/releases/download/{{ latest_versions.kubecolor }}/kubecolor_{{ latest_versions.kubecolor | regex_replace('^v','') }}_Linux_x86_64.tar.gz"
+        dest: /tmp/kubecolor.tar.gz
+        mode: '0644'
+
+    - name: Extract kubecolor
+      ansible.builtin.unarchive:
+        src: /tmp/kubecolor.tar.gz
+        dest: "{{ bin_dir }}"
+        remote_src: true
+
+    ######################################################################
+    # Install kubectx and kubens (same repo)
+    ######################################################################
+    - name: Install latest kubectx
+      ansible.builtin.get_url:
+        url: "https://github.com/ahmetb/kubectx/releases/download/{{ latest_versions.kubectx }}/kubectx"
+        dest: "{{ bin_dir }}/kubectx"
+        mode: '0755'
+
+    - name: Install latest kubens
+      ansible.builtin.get_url:
+        url: "https://github.com/ahmetb/kubectx/releases/download/{{ latest_versions.kubectx }}/kubens"
+        dest: "{{ bin_dir }}/kubens"
+        mode: '0755'
+
+    ######################################################################
+    # Install nerdctl
+    ######################################################################
+    - name: Install latest nerdctl
+      ansible.builtin.unarchive:
+        src: "https://github.com/containerd/nerdctl/releases/download/{{ latest_versions.nerdctl }}/nerdctl-{{ latest_versions.nerdctl }}-linux-amd64.tar.gz"
+        dest: "{{ bin_dir }}"
+        remote_src: true
+        mode: '0755'
+
+    ######################################################################
+    # Install dive
+    ######################################################################
+    - name: Install latest dive
+      ansible.builtin.unarchive:
+        src: "https://github.com/wagoodman/dive/releases/download/{{ latest_versions.dive }}/dive_{{ latest_versions.dive | regex_replace('^v','') }}_linux_amd64.tar.gz"
+        dest: "{{ bin_dir }}"
+        remote_src: true
+        mode: '0755'

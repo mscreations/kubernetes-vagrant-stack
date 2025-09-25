@@ -15,8 +15,8 @@
 - name: Install containerd
   ansible.builtin.import_playbook: containerd.yml
 
-- name: Install arkade packages
-  ansible.builtin.import_playbook: arkade-installs.yml
+- name: Install apps
+  ansible.builtin.import_playbook: apps.yml
 
 - name: Expire vagrant password if not changed
   ansible.builtin.import_playbook: reset_vagrant.yml
