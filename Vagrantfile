@@ -1,7 +1,7 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-require_relative '../../secrets.rb'
+require_relative '../../Kubernetes/secrets.rb'
 include Secrets
 include Constants
 
@@ -58,7 +58,7 @@ Vagrant.configure("2") do |config|
   end
   
   # Run customization ansible scripts for all hosts (scripts not in git)
-  Dir.glob("customize/*.y{a,}ml").each do |playbook|
+  Dir.glob("../../Kubernetes/customize/*.y{a,}ml").each do |playbook|
     config.vm.provision "ansible_local" do |ansible|
       ansible.playbook = playbook
     end
