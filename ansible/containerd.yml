@@ -6,4 +6,22 @@
     - role: geerlingguy.containerd
       vars:
         containerd_config_cgroup_driver_systemd: true
+  vars:
+    packages:
+      - apt-transport-https 
+      - ca-certificates 
+      - curl 
+      - gnupg 
+      - lsb-release 
+      - socat
+
+  tasks:
+    - name: Update APT caches
+      ansible.builtin.apt:
+        update-cache: true
+
+    - name: Install pre-requisite packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+      with_items: "{{ packages }}"
   
