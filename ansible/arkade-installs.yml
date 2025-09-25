@@ -21,8 +21,16 @@
     - name: Install other packages
       ansible.builtin.command: arkade get {{ item }}
       retries: 5
+      creates: "/root/.arkade/bin/{{ item }}"
       with_items: "{{ packages }}"
 
+    - name: Move packages to /usr/local/bin
+      ansible.builtin.file:
+        src: "/root/.arkade/bin/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+        owner: root
+        group: root
+        state: link
 
       
       
