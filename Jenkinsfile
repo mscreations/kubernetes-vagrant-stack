@@ -32,7 +32,27 @@ pipeline {
         }
         stage('Run Vagrant') {
             steps {
-                bat "vagrant up --provision"    // Ensure provisioners are rerun.
+                withInfisical(
+                    configuration: [
+                        infisicalCredentialId: 'infisical', 
+                        infisicalEnvironmentSlug: 'prod', 
+                        infisicalProjectSlug: 'homelab-b-h-sw', 
+                        infisicalUrl: 'https://app.infisical.com'
+                    ],
+                    infisicalSecrets: [
+                        infisicalSecret(
+                            includeImports: true, path: '/', secretValues: [
+                                [infisicalKey: 'DOMAIN_USER'], 
+                                [infisicalKey: 'DOMAIN_PASSWORD'], 
+                                [infisicalKey: 'CERT_EMAIL'], 
+                                [infisicalKey: 'DOMAIN'], 
+                                [infisicalKey: 'DHCP_SERVER']
+                            ]
+                        )
+                    ]
+                ) {
+                    bat "vagrant up --provision"    // Ensure provisioners are rerun.
+                }
             }
         }
     }
