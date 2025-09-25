@@ -21,7 +21,5 @@
         vagrant_shadow_entry: "{{ shadow_content.splitlines() | select('match', '^vagrant:') | list | first }}"
 
     - name: Expire vagrant password if default hash
-      ansible.builtin.user:
-        name: vagrant
-        expires: 1
+      ansible.builtin.command: passwd -e vagrant
       when: vagrant_shadow_entry == vagrant_default_hash
