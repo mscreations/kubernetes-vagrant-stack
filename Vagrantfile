@@ -1,7 +1,7 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-require_relative 'secrets.rb'
+require_relative '../../secrets.rb'
 include Secrets
 include Constants
 

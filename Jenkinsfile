@@ -23,16 +23,6 @@ pipeline {
                 ])
             }
         }
-        stage('Inject secrets.rb') {
-            steps {
-                withCredentials([file(credentialsId: 'secrets.rb', variable: 'SECRETS_FILE')]) {
-                    // Copy the credential file into the workspace as secrets.rb
-                    bat """
-                        copy "%SECRETS_FILE%" "%WORKSPACE%\\secrets.rb"
-                    """
-                }
-            }
-        }
         stage('Run Vagrant') {
             steps {
                 bat "vagrant up --provision"    // Ensure provisioners are rerun.
