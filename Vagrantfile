@@ -1,6 +1,13 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+master_count = ENV['MASTER_NODES_COUNT'].to_i
+worker_count = ENV['WORKER_NODES_COUNT'].to_i
+master_memory = ENV['MASTER_MAX_MEMORY'].to_i
+master_cpus   = ENV['MASTER_MAX_CPUS'].to_i
+worker_memory = ENV['WORKER_MAX_MEMORY'].to_i
+worker_cpus   = ENV['WORKER_MAX_CPUS'].to_i
+
 # Field names for servers array
 NODE_NAME = 0
 MAX_MEMORY = 1
@@ -11,17 +18,17 @@ MODE = 5
 
 j = 0
 servers = Array.new
-(0..(ENV['MASTER_NODES_COUNT'] - 1)).each do |i|
+(0..(master_count - 1)).each do |i|
   if i == 0
     mode = "init"
   else
     mode = "master"
   end
-  servers.push(["kmaster#{i+1}", ENV['MASTER_MAX_MEMORY'], ENV['MASTER_MAX_CPUS'], "00155d01020#{j}", "#{ENV['NETWORK_PREFIX']}.20#{j + 1}", mode])
+  servers.push(["kmaster#{i+1}", master_memory, master_cpus, "00155d01020#{j}", "#{ENV['NETWORK_PREFIX']}.20#{j + 1}", mode])
   j += 1
 end
-(0..(ENV['WORKER_NODES_COUNT'] - 1)).each do |i|
-    servers.push(["kworker#{i+1}", ENV['WORKER_MAX_MEMORY'], ENV['WORKER_MAX_CPUS'], "00155d01020#{j}", "#{ENV['NETWORK_PREFIX']}.20#{j + 1}", "worker"])
+(0..(worker_count - 1)).each do |i|
+    servers.push(["kworker#{i+1}", worker_memory, worker_cpus, "00155d01020#{j}", "#{ENV['NETWORK_PREFIX']}.20#{j + 1}", "worker"])
     j += 1
 end
 
