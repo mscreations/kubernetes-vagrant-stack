@@ -16,6 +16,7 @@ pipeline {
     }
     parameters {
         string name: 'VAGRANT_EXTRA_ARGS', trim: true
+        booleanParam 'UPDATE_BOX'
     }
     stages {
         stage('Checkout') {
@@ -34,6 +35,14 @@ pipeline {
                 powershell """
                     Copy-Item -Path '..\\..\\Kubernetes\\customize\\*' -Destination 'customize\\' -Recurse -Force
                 """
+            }
+        }
+        stage('Update Vagrant Box') {
+            when {
+                expression { params.UPDATE_BOX }
+            }
+            steps {
+                bat "vagrant box update"
             }
         }
         stage('Run Vagrant') {
