@@ -3,26 +3,18 @@
   hosts: all
   become: true
 
-  vars:
-    # Default vagrant password hash (from /etc/shadow)
-    vagrant_default_hash: "vagrant:$6$8P/WYeedh2vMmmn4$5LZtQr7MvzvtE2AGkQIlXJjZKyOUOyHwOcu5WSYBO7ls3.rgnGfl.236U0uAGbFY2ZCJt55tFBeJ1P1j.WQp/1:20352:0:99999:7:::"
   tasks:
-    - name: Read /etc/shadow
-      ansible.builtin.slurp:
-        src: /etc/shadow
-      register: shadow_file
-
-    - name: Decode shadow file
-      ansible.builtin.set_fact:
-        shadow_content: "{{ shadow_file['content'] | b64decode }}"
-
-    - name: Get vagrant user's shadow entry
-      ansible.builtin.set_fact:
-        vagrant_shadow_entry: "{{ shadow_content.splitlines() | select('match', '^vagrant:') | list | first }}"
+    - name: Check if vagrant password is still default
+      ansible.builtin.expect:
+        command: "su - vagrant -c 'id'"
+        responses:
+          (?i)Password: "vagrant"
+      register: su_result
+      ignore_errors: true
 
     - name: Expire vagrant password if default hash
       ansible.builtin.command: passwd -e vagrant
-      when: vagrant_shadow_entry == vagrant_default_hash
+      when: su_result.rc == 0
 
     - name: Autoremove packages
       ansible.builtin.apt:
