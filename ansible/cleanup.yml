@@ -41,12 +41,7 @@
       when: vagrant_shadow_entry == vagrant_default_hash
 
     - name: Reconfigure openssh-server to regenerate host keys
-      ansible.builtin.command:
-        cmd: dpkg-reconfigure openssh-server
-      args:
-        warn: false
-      register: reconfig_result
-      # changed_when: "'Creating SSH2 RSA key' in reconfig_result.stdout or 'Creating SSH2 RSA key' in reconfig_result.stderr"
+      ansible.builtin.shell: dpkg-reconfigure openssh-server 2>/dev/null
       when: vagrant_shadow_entry == vagrant_default_hash
 
     - name: Autoremove packages
