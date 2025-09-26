@@ -1,12 +1,17 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-master_count = ENV['MASTER_NODES_COUNT'].to_i
-worker_count = ENV['WORKER_NODES_COUNT'].to_i
-master_memory = ENV['MASTER_MAX_MEMORY'].to_i
-master_cpus   = ENV['MASTER_MAX_CPUS'].to_i
-worker_memory = ENV['WORKER_MAX_MEMORY'].to_i
-worker_cpus   = ENV['WORKER_MAX_CPUS'].to_i
+NETWORK_PREFIX      = "172.29.125"
+POD_NETWORK         = "192.168.0.0/16"
+VAGRANT_BOX         = "mscreations/ubuntu2404"
+
+MASTER_NODES_COUNT  = 1
+MASTER_MAX_CPUS     = 4
+MASTER_MAX_MEMORY   = 4096  # 4GB
+
+WORKER_NODES_COUNT  = 0
+WORKER_MAX_CPUS     = 16
+WORKER_MAX_MEMORY   = 32768  # 32GB
 
 # Field names for servers array
 NODE_NAME = 0
@@ -18,17 +23,17 @@ MODE = 5
 
 j = 0
 servers = Array.new
-(0..(master_count - 1)).each do |i|
+(0..(MASTER_NODES_COUNT - 1)).each do |i|
   if i == 0
     mode = "init"
   else
     mode = "master"
   end
-  servers.push(["kmaster#{i+1}", master_memory, master_cpus, "00155d01020#{j}", "#{ENV['NETWORK_PREFIX']}.20#{j + 1}", mode])
+  servers.push(["kmaster#{i+1}", MASTER_MAX_MEMORY, MASTER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode])
   j += 1
 end
-(0..(worker_count - 1)).each do |i|
-    servers.push(["kworker#{i+1}", worker_memory, worker_cpus, "00155d01020#{j}", "#{ENV['NETWORK_PREFIX']}.20#{j + 1}", "worker"])
+(0..(WORKER_NODES_COUNT - 1)).each do |i|
+    servers.push(["kworker#{i+1}", WORKER_MAX_MEMORY, WORKER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", "worker"])
     j += 1
 end
 
@@ -42,7 +47,7 @@ servers.each do |server|
 end
 
 Vagrant.configure("2") do |config|
-  config.vm.box = ENV['VAGRANT_BOX']
+  config.vm.box = VAGRANT_BOX
   config.vm.synced_folder ".", "/vagrant", mount_options: ["uid=1000", "gid=1000"], smb_username: ENV['DOMAIN_USER'], smb_password: ENV['DOMAIN_PASSWORD']
 
   # Run customization ansible scripts for all hosts (scripts not in git)
@@ -88,10 +93,10 @@ Vagrant.configure("2") do |config|
 
         # Manually add in DHCP reservation for VM
         override.trigger.after :'VagrantPlugins::HyperV::Action::Import', type: :action do |trigger|
-          trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{ENV['NETWORK_PREFIX']}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']}"}
+          trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']}"}
         end
         override.trigger.before :'VagrantPlugins::HyperV::Action::DeleteVM', type: :action do |trigger|
-          trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{ENV['NETWORK_PREFIX']}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']} -RemoveReservation"}
+          trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']} -RemoveReservation"}
         end
       end
     end
