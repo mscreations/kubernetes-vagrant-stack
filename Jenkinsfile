@@ -2,15 +2,20 @@ pipeline {
     agent { label 'hyperv' }
     options {
         ansiColor('xterm')
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '30', numToKeepStr: '5'))
     }
     environment {
         VAGRANT_DOTFILE_PATH='D:\\Jenkins\\.vagrant'
         VAGRANT_FORCE_COLOR=1
         VAGRANT_INSTALL_LOCAL_PLUGINS=1
-                    
     }
     triggers {
         pollSCM('H/15 * * * *')   // poll every 15 minutes
+    }
+    parameters {
+        string name: 'VAGRANT_EXTRA_ARGS', trim: true
     }
     stages {
         stage('Checkout') {
@@ -52,7 +57,7 @@ pipeline {
                         )
                     ]
                 ) {
-                    bat "vagrant up --provision"    // Ensure provisioners are rerun.
+                    bat "vagrant up --provision $VAGRANT_EXTRA_ARGS"    // Ensure provisioners are rerun.
                 }
             }
         }
