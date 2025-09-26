@@ -56,9 +56,6 @@ Vagrant.configure("2") do |config|
   Dir.glob("customize/*.y{a,}ml").each do |playbook|
     config.vm.provision "ansible_local" do |ansible|
       ansible.playbook = playbook
-      ansible.extra_vars = {
-        ansible_python_interpreter: "auto_silent"
-      }
     end
   end
 
@@ -66,9 +63,6 @@ Vagrant.configure("2") do |config|
   config.vm.provision "ansible_local" do |ansible|
     ansible.playbook          = "ansible/stage1.yml"
     ansible.galaxy_role_file  = "ansible/requirements.yml"
-    ansible.extra_vars = {
-      ansible_python_interpreter: "auto_silent"
-    }
   end
   
   servers.each do |server|
