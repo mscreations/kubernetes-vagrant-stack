@@ -17,6 +17,15 @@ pipeline {
     parameters {
         string name: 'VAGRANT_EXTRA_ARGS', trim: true
         booleanParam 'UPDATE_BOX'
+        string defaultValue: '172.29.125', name: 'NETWORK_PREFIX', trim: true
+        string defaultValue: '192.168.0.0/16', name: 'POD_NETWORK', trim: true
+        string defaultValue: 'mscreations/ubuntu2404', name: 'VAGRANT_BOX', trim: true
+        string defaultValue: '1', name: 'MASTER_NODES_COUNT', trim: true
+        string defaultValue: '4', name: 'MASTER_MAX_CPUS', trim: true
+        string defaultValue: '4096', name: 'MASTER_MAX_MEMORY', trim: true
+        string defaultValue: '0', name: 'WORKER_NODES_COUNT', trim: true
+        string defaultValue: '16', name: 'WORKER_MAX_CPUS', trim: true
+        string defaultValue: '32768', name: 'WORKER_MAX_MEMORY', trim: true
     }
     stages {
         stage('Checkout') {
