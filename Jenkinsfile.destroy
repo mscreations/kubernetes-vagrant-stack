@@ -41,7 +41,7 @@ pipeline {
                         )
                     ]
                 ) {
-                    bat "vagrant destroy -f"
+                    bat "vagrant destroy --timestamp -f"
                 }
             }
         }
