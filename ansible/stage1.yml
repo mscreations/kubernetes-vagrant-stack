@@ -3,6 +3,9 @@
   hosts: all
   become: true
 
+- name: Update all packages
+  ansible.builtin.import_playbook: update.yml
+
 - name: Install Neovim
   ansible.builtin.import_playbook: neovim.yml
 
@@ -18,5 +21,5 @@
 - name: Install apps
   ansible.builtin.import_playbook: apps.yml
 
-- name: Expire vagrant password if not changed
-  ansible.builtin.import_playbook: reset_vagrant.yml
+- name: Perform cleanup tasks
+  ansible.builtin.import_playbook: cleanup.yml
