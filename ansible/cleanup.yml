@@ -46,7 +46,7 @@
       args:
         warn: false
       register: reconfig_result
-      changed_when: "'Creating SSH2 RSA key' in reconfig_result.stdout or 'Creating SSH2 RSA key' in reconfig_result.stderr"
+      # changed_when: "'Creating SSH2 RSA key' in reconfig_result.stdout or 'Creating SSH2 RSA key' in reconfig_result.stderr"
       when: vagrant_shadow_entry == vagrant_default_hash
 
     - name: Autoremove packages
