@@ -24,26 +24,6 @@
       ansible.builtin.command: passwd -e vagrant
       when: vagrant_shadow_entry == vagrant_default_hash
 
-    
-    # Following entries will reset the SSH Host key ONLY if we've never changed the password (indicating we've never logged in before)
-    - name: Find existing SSH host keys
-      ansible.builtin.find:
-        paths: /etc/ssh
-        patterns: 'ssh_host_*'
-      register: ssh_keys
-      when: vagrant_shadow_entry == vagrant_default_hash
-
-    - name: Remove old SSH host keys
-      ansible.builtin.file:
-        path: "{{ item.path }}"
-        state: absent
-      loop: "{{ ssh_keys.files }}"
-      when: vagrant_shadow_entry == vagrant_default_hash
-
-    - name: Reconfigure openssh-server to regenerate host keys
-      ansible.builtin.shell: dpkg-reconfigure openssh-server 2>/dev/null
-      when: vagrant_shadow_entry == vagrant_default_hash
-
     - name: Autoremove packages
       ansible.builtin.apt:
         update_cache: true

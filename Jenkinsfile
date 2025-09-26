@@ -52,7 +52,7 @@ pipeline {
                         )
                     ]
                 ) {
-                    bat "vagrant up --timestamp --provision"    // Ensure provisioners are rerun.
+                    bat "vagrant up --provision"    // Ensure provisioners are rerun.
                 }
             }
         }
