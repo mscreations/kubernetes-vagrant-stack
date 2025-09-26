@@ -49,7 +49,7 @@
       changed_when: "'Creating SSH2 RSA key' in reconfig_result.stdout or 'Creating SSH2 RSA key' in reconfig_result.stderr"
       when: vagrant_shadow_entry == vagrant_default_hash
 
-    - name: Update all packages
+    - name: Autoremove packages
       ansible.builtin.apt:
         update_cache: true
         autoremove: true
