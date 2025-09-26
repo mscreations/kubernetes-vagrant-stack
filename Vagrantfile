@@ -42,8 +42,6 @@ servers.each do |server|
 end
 
 Vagrant.configure("2") do |config|
-  config.vagrant.sensitive = sensitive_values
-
   config.vm.box = ENV['VAGRANT_BOX']
   config.vm.synced_folder ".", "/vagrant", mount_options: ["uid=1000", "gid=1000"], smb_username: ENV['DOMAIN_USER'], smb_password: ENV['DOMAIN_PASSWORD']
 
