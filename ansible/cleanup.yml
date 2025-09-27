@@ -13,6 +13,13 @@
       ignore_errors: true
       changed_when: false
 
+    - name: new_ssh_password
+      ansible.builtin.debug:
+        var: new_ssh_password
+
+    - name: su_result
+      ansible.builtin.debug:
+        var: su_result
 
     - name: Generate SHA512 password hash on target host
       ansible.builtin.shell: |
