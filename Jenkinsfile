@@ -12,7 +12,8 @@ pipeline {
         VAGRANT_INSTALL_LOCAL_PLUGINS=1
     }
     triggers {
-        pollSCM('H/15 * * * *')   // poll every 15 minutes
+        //pollSCM('H/15 * * * *')   // poll every 15 minutes
+        pollSCM('*/2 * * * *')
     }
     parameters {
         string name: 'VAGRANT_EXTRA_ARGS', trim: true
