@@ -1,0 +1,94 @@
+---
+- name: Join AD Domain
+  hosts: all
+  become: true
+  vars:
+    required_packages:
+      - sssd-ad
+      - sssd-tools
+      - realmd
+      - adcli
+
+  tasks:
+    - name: Install pre-requisite packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      with_items: "{{ required_packages }}"
+
+    - name: Check if machine is already joined to the domain
+      ansible.builtin.command: realm list
+      register: realm_status
+      changed_when: false
+      failed_when: false
+
+    - name: Adjust ssh settings
+      ansible.builtin.copy:
+        dest: '/etc/ssh/sshd_config.d/10-custom.conf'
+        content: |
+          AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys
+          AuthorizedKeysCommandUser root
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Configure AD sudoers
+      ansible.builtin.copy:
+        dest: '/etc/sudoers.d/50-ad-users'
+        content: |
+          Defaults    pwfeedback
+          Defaults    passwd_timeout=60
+          Defaults    insults
+
+          %sudo   ALL=(ALL:ALL) NOPASSWD:ALL
+          %domain\\ admins   ALL=(ALL:ALL) NOPASSWD:ALL
+        owner: root
+        group: root
+        mode: '0440'
+
+    - name: Join domain if not already joined
+      ansible.builtin.shell: |
+        echo "{{ domain_password }}" | realm join {{ domain }} --computer-ou=OU='Linux Servers'
+      when: "'{{ domain }}' not in realm_status.stdout"
+      register: realm_join
+      failed_when: "'Already joined' not in realm_join.stderr and realm_join.rc != 0"
+      notify: Reboot
+ 
+    - name: Enable mkhomedir for PAM
+      ansible.builtin.command: pam-auth-update --enable mkhomedir
+    
+    - name: Flush SSSD cache
+      ansible.builtin.command: sss_cache -E
+
+    - name: Configure SSSD
+      ansible.builtin.copy:
+        dest: "/etc/sssd/sssd.conf"
+        content: |
+          [sssd]
+          domains = {{ domain }}
+          config_file_version = 2
+          services = nss, pam
+
+          [domain/{{ domain }}]
+          default_shell = /usr/bin/zsh
+          krb5_store_password_if_offline = True
+          cache_credentials = True
+          krb5_realm = {{ domain | upper }}
+          realmd_tags = manages-system joined-with-adcli
+          id_provider = ad
+          fallback_homedir = /home/%u
+          ad_domain = {{ domain }}
+          ldap_id_mapping = False
+          ldap_user_extra_attrs = sshPublicKeys
+          ldap_user_ssh_public_key = sshPublicKeys
+          access_provider = ad
+          ad_gpo_ignore_unreadable = True
+          case_sensitive = True
+        owner: root
+        group: root
+        mode: '0600'
+
+  handlers:
+    - name: Reboot
+      reboot:
+        reboot_timeout: 600

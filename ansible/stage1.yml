@@ -21,6 +21,12 @@
 - name: Install apps
   ansible.builtin.import_playbook: apps.yml
 
+- name: Join to domain
+  ansible.builtin.import_playbook: ad.yml
+  vars:
+    domain_password: "{{ domain_password }}"
+    domain: "{{ domain }}"
+
 - name: Perform cleanup tasks
   ansible.builtin.import_playbook: cleanup.yml
   vars:

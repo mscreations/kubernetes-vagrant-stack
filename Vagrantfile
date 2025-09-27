@@ -63,11 +63,11 @@ Vagrant.configure("2") do |config|
   config.vm.provision "ansible_local" do |ansible|
     ansible.playbook          = "ansible/stage1.yml"
     ansible.galaxy_role_file  = "ansible/requirements.yml"
-    if ENV['NEW_SSH_PASSWORD'] && !ENV['NEW_SSH_PASSWORD'].empty?
-      ansible.extra_vars = {
-        new_ssh_password: ENV['NEW_SSH_PASSWORD']
-      }
-    end
+    ansible.extra_vars = {
+      new_ssh_password: ENV['NEW_SSH_PASSWORD'],
+      domain_password: ENV['DOMAIN_PASSWORD'],
+      domain: ENV["DOMAIN"]
+    }
   end
   
   servers.each do |server|
@@ -107,4 +107,14 @@ Vagrant.configure("2") do |config|
     end
   end
 
+  config.trigger.before :destroy do |trigger|
+  trigger.info = "Disconnecting from the domain"
+  trigger.on_error = :continue
+  trigger.run_remote = {
+    path: "/vagrant/unjoin_domain.sh", 
+    env: { 
+      "DOMAIN_PASS" => ENV['DOMAIN_PASSWORD']
+    }
+  }
+  end
 end
