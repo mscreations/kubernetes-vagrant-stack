@@ -11,6 +11,7 @@
           (?i)Password: "vagrant"
       register: su_result
       ignore_errors: true
+      changed_when: false
 
 
     - name: Generate SHA512 password hash on target host
@@ -19,7 +20,7 @@
       args:
         executable: /bin/bash
       register: password_hash_result
-      when: new_ssh_password is defined and new_ssh_password != ''
+      when: new_ssh_password is defined and new_ssh_password != '' and su_result.rc == 0
 
     - name: Change vagrant user password
       ansible.builtin.user:

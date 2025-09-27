@@ -56,9 +56,11 @@
  
     - name: Enable mkhomedir for PAM
       ansible.builtin.command: pam-auth-update --enable mkhomedir
+      when: domain not in realm_status.stdout
     
     - name: Flush SSSD cache
       ansible.builtin.command: sss_cache -E
+      when: domain not in realm_status.stdout
 
     - name: Configure SSSD
       ansible.builtin.copy:
