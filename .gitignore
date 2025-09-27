@@ -23,3 +23,5 @@ secrets.rb
 customize/
 
 certificates/
+
+env.ps1

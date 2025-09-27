@@ -12,9 +12,12 @@
       register: su_result
       ignore_errors: true
 
-    - name: Expire vagrant password if default hash
-      ansible.builtin.command: passwd -e vagrant
-      when: su_result.rc == 0
+    - name: Change vagrant user password
+      user:
+        name: vagrant
+        password: "{{ new_ssh_password | password_hash('sha512') }}"
+
+      when: su_result.rc == 0 and new_ssh_password != ''
 
     - name: Autoremove packages
       ansible.builtin.apt:

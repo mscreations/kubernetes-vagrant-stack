@@ -63,6 +63,11 @@ Vagrant.configure("2") do |config|
   config.vm.provision "ansible_local" do |ansible|
     ansible.playbook          = "ansible/stage1.yml"
     ansible.galaxy_role_file  = "ansible/requirements.yml"
+    if ENV['NEW_SSH_PASSWORD'] && !ENV['NEW_SSH_PASSWORD'].empty?
+      ansible.extra_vars = {
+        new_ssh_password: ENV['NEW_SSH_PASSWORD']
+      }
+    end
   end
   
   servers.each do |server|
