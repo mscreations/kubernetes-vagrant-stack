@@ -18,6 +18,7 @@
       kubectx: "https://api.github.com/repos/ahmetb/kubectx/releases/latest"
       nerdctl: "https://api.github.com/repos/containerd/nerdctl/releases/latest"
       dive: "https://api.github.com/repos/wagoodman/dive/releases/latest"
+      arkade: "https://api.github.com/repos/alexellis/arkade/releases/latest"
 
   tasks:
 
@@ -172,3 +173,27 @@
         remote_src: true
         mode: '0755'
         creates: "{{ bin_dir }}/dive"
+
+    ######################################################################
+    # Install Neovim
+    ######################################################################
+    - name: Install Neovim
+      ansible.builtin.apt:
+        update_cache: true
+        name:
+          - neovim
+
+    - name: Update alternatives for editor
+      community.general.alternatives:
+        name: editor
+        state: selected
+        path: /usr/bin/nvim
+
+    ######################################################################
+    # Install arkade
+    ######################################################################
+    - name: Install latest arkade
+      ansible.builtin.get_url:
+        url: "https://github.com/alexellis/arkade/releases/download/{{ latest_versions.arkade }}/arkade"
+        dest: "{{ bin_dir }}/arkade"
+        mode: '0755'

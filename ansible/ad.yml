@@ -54,8 +54,23 @@
       failed_when: "'Already joined' not in realm_join.stderr and realm_join.rc != 0"
       notify: Reboot
  
-    - name: Enable mkhomedir for PAM
-      ansible.builtin.command: pam-auth-update --enable mkhomedir
+    - name: Enable pam_mkhomedir in common-session
+      community.general.pamd:
+        name: common-session
+        type: session
+        control: required
+        module_path: pam_mkhomedir.so
+        state: present
+        module_arguments: skel=/etc/skel umask=0022
+
+    - name: Enable pam_mkhomedir in common-session-noninteractive
+      community.general.pamd:
+        name: common-session-noninteractive
+        type: session
+        control: required
+        module_path: pam_mkhomedir.so
+        state: present
+        module_arguments: skel=/etc/skel umask=0022
     
     - name: Flush SSSD cache
       ansible.builtin.command: sss_cache -E

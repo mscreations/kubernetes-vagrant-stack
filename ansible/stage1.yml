@@ -6,12 +6,6 @@
 - name: Update all packages
   ansible.builtin.import_playbook: update.yml
 
-- name: Install Neovim
-  ansible.builtin.import_playbook: neovim.yml
-
-- name: Install Arkade
-  ansible.builtin.import_playbook: arkade.yml
-
 - name: Prepare system for Kubernetes
   ansible.builtin.import_playbook: prepare.yml
 
