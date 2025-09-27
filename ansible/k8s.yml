@@ -1,0 +1,25 @@
+---
+- name: Install k8s components
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Add Kubernetes APT repository
+      ansible.builtin.deb822_repository:
+        name: kubernetes
+        types: [deb]
+        uris: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/"
+        signed_by: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/Release.key"
+        suites: [/]
+        state: present
+        enabled: yes
+
+    - name: Install k8s tools
+      ansible.builtin.apt:
+        update_cache: true
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - kubeadm
+        - kubectl
+        - kubelet
