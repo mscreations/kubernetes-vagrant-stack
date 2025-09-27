@@ -12,10 +12,7 @@
       register: su_result
       ignore_errors: true
       changed_when: false
-
-    - name: new_ssh_password
-      ansible.builtin.debug:
-        var: new_ssh_password
+      become_user: vagrant
 
     - name: su_result
       ansible.builtin.debug:
