@@ -47,6 +47,7 @@ servers.each do |server|
 end
 
 Vagrant.configure("2") do |config|
+  config.vagrant.plugins = ['vagrant-reload']
   config.vm.box = VAGRANT_BOX
   config.vm.synced_folder ".", "/vagrant", mount_options: ["uid=1000", "gid=1000"], smb_username: ENV['DOMAIN_USER'], smb_password: ENV['DOMAIN_PASSWORD']
 
@@ -70,6 +71,8 @@ Vagrant.configure("2") do |config|
     }
   end
   
+  config.vm.provision :reload
+
   servers.each do |server|
     config.vm.define server[NODE_NAME] do |node|
       node.vm.network "public_network", bridge: "LAN"
