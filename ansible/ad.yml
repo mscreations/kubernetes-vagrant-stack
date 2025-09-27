@@ -90,5 +90,5 @@
 
   handlers:
     - name: Reboot
-      reboot:
-        reboot_timeout: 600
+      ansible.builtin.debug:
+        msg: "THE SERVER WILL NEED REBOOTED BEFORE SIGNING IN WITH DOMAIN USER"
