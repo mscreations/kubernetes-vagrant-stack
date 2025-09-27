@@ -5,8 +5,7 @@
     bin_dir: /usr/local/bin
 
     # Kubectl must be pinned
-    kubectl_version: "v1.34.1"
-    kubectl_url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+    kubectl_url: "https://dl.k8s.io/release/{{ k8s_version }}/bin/linux/amd64/kubectl"
 
     github_releases:
       yq: "https://api.github.com/repos/mikefarah/yq/releases/latest"
@@ -25,7 +24,7 @@
     ######################################################################
     # Kubectl (pinned version)
     ######################################################################
-    - name: Install kubectl (specific version)
+    - name: Install kubectl ({{ k8s_version }})
       ansible.builtin.get_url:
         url: "{{ kubectl_url }}"
         dest: "{{ bin_dir }}/kubectl"

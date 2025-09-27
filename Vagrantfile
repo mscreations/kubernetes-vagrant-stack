@@ -68,7 +68,8 @@ Vagrant.configure("2") do |config|
     ansible.extra_vars = {
       new_ssh_password: ENV['NEW_SSH_PASSWORD'],
       domain_password: ENV['DOMAIN_PASSWORD'],
-      domain: ENV["DOMAIN"]
+      domain: ENV["DOMAIN"],
+      k8s_version: ENV["K8S_VERSION"]
     }
   end
   

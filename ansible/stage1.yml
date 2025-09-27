@@ -14,6 +14,8 @@
 
 - name: Install apps
   ansible.builtin.import_playbook: apps.yml
+  vars:
+    k8s_version: "{{ k8s_version }}"
 
 - name: Join to domain
   ansible.builtin.import_playbook: ad.yml
