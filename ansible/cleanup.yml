@@ -13,10 +13,7 @@
       ignore_errors: true
       changed_when: false
       become_user: vagrant
-
-    - name: su_result
-      ansible.builtin.debug:
-        var: su_result
+      failed_when: "'uid=1200(vagrant) gid=1200(vagrant) groups=1200(vagrant)' in su_result.stdout"
 
     - name: Generate SHA512 password hash on target host
       ansible.builtin.shell: |
