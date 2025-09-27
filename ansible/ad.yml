@@ -41,7 +41,7 @@
           Defaults    insults
 
           %sudo   ALL=(ALL:ALL) NOPASSWD:ALL
-          %domain\\ admins   ALL=(ALL:ALL) NOPASSWD:ALL
+          %domain\ admins   ALL=(ALL:ALL) NOPASSWD:ALL
         owner: root
         group: root
         mode: '0440'
