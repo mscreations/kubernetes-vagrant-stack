@@ -14,8 +14,6 @@
 
 - name: Install apps
   ansible.builtin.import_playbook: apps.yml
-  vars:
-    k8s_version: "{{ k8s_version }}"
 
 - name: Join to domain
   ansible.builtin.import_playbook: ad.yml
@@ -27,3 +25,24 @@
   ansible.builtin.import_playbook: cleanup.yml
   vars:
     new_ssh_password: "{{ new_ssh_password | default('') }}"
+
+task:
+  - name: Add Kubernetes APT repository
+    ansible.builtin.deb822_repository:
+      name: kubernetes
+      types: [deb]
+      uris: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/"
+      signed_by: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/Release.key"
+      suites: [/]
+      state: present
+      enabled: yes
+
+  - name: Install k8s tools
+    ansible.builtin.apt:
+      update_cache: true
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - kubeadm
+      - kubectl
+      - kubelet

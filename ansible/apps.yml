@@ -1,11 +1,8 @@
-- name: Install Kubernetes & CLI tools
+- name: Install Github hosted CLI tools
   hosts: all
   become: true
   vars:
     bin_dir: /usr/local/bin
-
-    # Kubectl must be pinned
-    kubectl_url: "https://dl.k8s.io/release/v{{ k8s_version }}/bin/linux/amd64/kubectl"
 
     github_releases:
       yq: "https://api.github.com/repos/mikefarah/yq/releases/latest"
@@ -20,16 +17,6 @@
       arkade: "https://api.github.com/repos/alexellis/arkade/releases/latest"
 
   tasks:
-
-    ######################################################################
-    # Kubectl (pinned version)
-    ######################################################################
-    - name: Install kubectl ({{ k8s_version }})
-      ansible.builtin.get_url:
-        url: "{{ kubectl_url }}"
-        dest: "{{ bin_dir }}/kubectl"
-        mode: '0755'
-
     ######################################################################
     # Dynamic installers for GitHub-hosted tools
     ######################################################################
