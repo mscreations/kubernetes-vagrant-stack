@@ -74,6 +74,7 @@
         dest: /tmp
         remote_src: true
       register: helm_extract
+      changed_when: false
 
     - name: Move helm binary
       ansible.builtin.copy:
@@ -106,12 +107,13 @@
     ######################################################################
     # Install krew
     ######################################################################
-    - name: Install latest krew (bootstrap installer)
+    - name: Install latest krew
       ansible.builtin.unarchive:
         src: "https://github.com/kubernetes-sigs/krew/releases/download/{{ latest_versions.krew }}/krew-linux_amd64.tar.gz"
         dest: /tmp
         remote_src: true
       register: krew_extract
+      changed_when: false
 
     - name: Move krew binary
       ansible.builtin.copy:
@@ -129,6 +131,7 @@
         url: "https://github.com/hidetatz/kubecolor/releases/download/{{ latest_versions.kubecolor }}/kubecolor_{{ latest_versions.kubecolor | regex_replace('^v','') }}_Linux_x86_64.tar.gz"
         dest: /tmp/kubecolor.tar.gz
         mode: '0644'
+      changed_when: false
 
     - name: Extract kubecolor
       ansible.builtin.unarchive:
