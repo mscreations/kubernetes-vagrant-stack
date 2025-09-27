@@ -21,10 +21,6 @@
       register: password_hash_result
       when: new_ssh_password is defined and new_ssh_password != ''
 
-    - name: Debug generated hash (optional)
-      debug:
-        var: password_hash_result.stdout
-
     - name: Change vagrant user password
       ansible.builtin.user:
         name: vagrant
