@@ -14,6 +14,7 @@
       - gnupg 
       - lsb-release 
       - socat
+      - python3-passlib
 
   tasks:
     - name: Update APT caches
