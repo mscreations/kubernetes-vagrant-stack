@@ -49,7 +49,7 @@
     - name: Join domain if not already joined
       ansible.builtin.shell: |
         echo "{{ domain_password }}" | realm join {{ domain }} --computer-ou=OU='Linux Servers'
-      when: "'{{ domain }}' not in realm_status.stdout"
+      when: domain not in realm_status.stdout
       register: realm_join
       failed_when: "'Already joined' not in realm_join.stderr and realm_join.rc != 0"
       notify: Reboot
