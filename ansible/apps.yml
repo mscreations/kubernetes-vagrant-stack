@@ -5,7 +5,7 @@
     bin_dir: /usr/local/bin
 
     # Kubectl must be pinned
-    kubectl_url: "https://dl.k8s.io/release/{{ k8s_version }}/bin/linux/amd64/kubectl"
+    kubectl_url: "https://dl.k8s.io/release/v{{ k8s_version }}/bin/linux/amd64/kubectl"
 
     github_releases:
       yq: "https://api.github.com/repos/mikefarah/yq/releases/latest"
