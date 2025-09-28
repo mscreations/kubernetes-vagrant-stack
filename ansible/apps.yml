@@ -148,6 +148,7 @@
         src: "https://github.com/wagoodman/dive/releases/download/{{ latest_versions.dive }}/dive_{{ latest_versions.dive | regex_replace('^v','') }}_linux_amd64.tar.gz"
         dest: "{{ bin_dir }}"
         remote_src: true
+        include: ["dive"]
         mode: '0755'
         creates: "{{ bin_dir }}/dive"
 
