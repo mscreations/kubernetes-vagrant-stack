@@ -2,20 +2,8 @@
 - name: Join AD Domain
   hosts: all
   become: true
-  vars:
-    required_packages:
-      - sssd-ad
-      - sssd-tools
-      - realmd
-      - adcli
 
   tasks:
-    - name: Install pre-requisite packages
-      ansible.builtin.apt:
-        name: "{{ item }}"
-        state: present
-      with_items: "{{ required_packages }}"
-
     - name: Check if machine is already joined to the domain
       ansible.builtin.command: realm list
       register: realm_status

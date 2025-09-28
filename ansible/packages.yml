@@ -1,0 +1,37 @@
+---
+- name: Install prerequisite packages
+  hosts: all
+  become: true
+  vars:
+    packages:
+      - apt-transport-https 
+      - ca-certificates 
+      - curl 
+      - gnupg 
+      - lsb-release 
+      - socat
+      - python3-passlib # Reset vagrant password
+      - unzip   # For app installs
+      # For AD
+      - sssd-ad
+      - sssd-tools
+      - realmd
+      - adcli
+      - neovim
+  
+  tasks:
+    - name: Update all packages
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: "full"
+
+    - name: Install pre-requisite packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+      with_items: "{{ packages }}"
+
+    - name: Update alternatives for editor
+      community.general.alternatives:
+        name: editor
+        state: selected
+        path: /usr/bin/nvim

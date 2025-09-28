@@ -3,8 +3,8 @@
   hosts: all
   become: true
 
-- name: Update all packages
-  ansible.builtin.import_playbook: update.yml
+- name: Install prerequisite packages from Apt
+  ansible.builtin.import_playbook: packages.yml
 
 - name: Prepare system for Kubernetes
   ansible.builtin.import_playbook: prepare.yml
@@ -21,12 +21,12 @@
     domain_password: "{{ domain_password }}"
     domain: "{{ domain }}"
 
-- name: Perform cleanup tasks
-  ansible.builtin.import_playbook: cleanup.yml
-  vars:
-    new_ssh_password: "{{ new_ssh_password | default('') }}"
-
 - name: Install k8s components
   ansible.builtin.import_playbook: k8s.yml
   vars:
     k8s_version: "{{ k8s_version }}"
+
+- name: Perform cleanup tasks
+  ansible.builtin.import_playbook: cleanup.yml
+  vars:
+    new_ssh_password: "{{ new_ssh_password | default('') }}"
