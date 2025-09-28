@@ -106,7 +106,7 @@ Vagrant.configure("2") do |config|
           trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']}"}
         end
         override.trigger.after :'VagrantPlugins::HyperV::Action::Import', type: :action do |trigger|
-          trigger.run = {inline: "./reset_uuid.ps1 -VMName #{server[NODE_NAME]}"}
+          trigger.run = {inline: "./reset_uuid.ps1 -VMName \"k8s (#{server[NODE_NAME]})\""}
         end
         override.trigger.before :'VagrantPlugins::HyperV::Action::DeleteVM', type: :action do |trigger|
           trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']} -RemoveReservation"}
