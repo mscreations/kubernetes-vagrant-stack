@@ -105,21 +105,14 @@ Vagrant.configure("2") do |config|
         override.trigger.after :'VagrantPlugins::HyperV::Action::Import', type: :action do |trigger|
           trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']}"}
         end
+        override.trigger.after :'VagrantPlugins::HyperV::Action::Import', type: :action do |trigger|
+          trigger.run = {inline: "./reset_uuid.ps1 -VMName #{server[NODE_NAME]}"}
+        end
         override.trigger.before :'VagrantPlugins::HyperV::Action::DeleteVM', type: :action do |trigger|
           trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']} -RemoveReservation"}
         end
       end
     end
-  end
-
-  config.trigger.before :up do |trigger|
-    trigger.info = "Resetting UUID"
-    trigger.on_error = :continue
-    trigger.run = {
-      inline: <<-POWERSHELL
-        powershell -ExecutionPolicy Bypass -File "reset_uuid.ps1" -VMName "#{config.vm.hostname}"
-      POWERSHELL
-    }
   end
 
   config.trigger.before :destroy do |trigger|
