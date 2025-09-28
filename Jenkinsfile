@@ -16,7 +16,7 @@ pipeline {
         pollSCM('*/2 * * * *')
     }
     parameters {
-        string defaultValue: "1.34.1", name: 'K8S_VERSION', trim: true
+        string defaultValue: "1.34", name: 'K8S_VERSION', trim: true
         string name: 'VAGRANT_EXTRA_ARGS', trim: true
         booleanParam 'UPDATE_BOX'
         string defaultValue: '172.29.125', name: 'NETWORK_PREFIX', trim: true
