@@ -16,7 +16,8 @@
       dive: "https://api.github.com/repos/wagoodman/dive/releases/latest"
       arkade: "https://api.github.com/repos/alexellis/arkade/releases/latest"
       yh: "https://api.github.com/repos/andreazorzetto/yh/releases/latest"
-
+      etcdutl: "https://api.github.com/repos/etcd-io/etcd/releases/latest"
+      
   tasks:
     ######################################################################
     # Dynamic installers for GitHub-hosted tools
@@ -63,6 +64,7 @@
         extra_opts: ["--strip-components=1"]
         remote_src: true
         mode: '0755'
+        creates: "{{ bin_dir }}/helm
 
     ######################################################################
     # Install jq
@@ -96,6 +98,7 @@
           - --transform
           - "s|krew-linux_amd64|krew|"
         mode: '0755'
+        creates: "{{ bin_dir }}/krew
 
     ######################################################################
     # Install kubecolor
@@ -107,7 +110,8 @@
         mode: '0644'
         remote_src: true
         include: ["kubecolor"]
-        
+        creates: "{{ bin_dir }}/kubecolor"
+
     ######################################################################
     # Install kubectx and kubens (same repo)
     ######################################################################
@@ -180,3 +184,16 @@
         remote_src: true
         mode: '0755'
         creates: "{{ bin_dir }}/yh"
+
+    ######################################################################
+    # Install etcdutl
+    ######################################################################
+    - name: Install latest etcdutl
+      ansible.builtin.unarchive:
+        src: "https://github.com/etcd-io/etcd/releases/download/{{ latest_versions.etcdutl }}/etcd-{{ latest_versions.etcdutl }}-linux-amd64.tar.gz"
+        dest: "{{ bin_dir }}"
+        remote_src: true
+        include: ["etcd-{{ latest_versions.etcdutl }}-linux-amd64/etcdutl"]
+        extra_opts: ["--strip-components=1"]
+        mode: '0755'
+        creates: "{{ bin_dir }}/etcdutl"
