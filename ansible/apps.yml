@@ -101,19 +101,13 @@
     # Install kubecolor
     ######################################################################
     - name: Install latest kubecolor
-      ansible.builtin.get_url:
-        url: "https://github.com/hidetatz/kubecolor/releases/download/{{ latest_versions.kubecolor }}/kubecolor_{{ latest_versions.kubecolor | regex_replace('^v','') }}_Linux_x86_64.tar.gz"
-        dest: /tmp/kubecolor.tar.gz
-        mode: '0644'
-      changed_when: false
-
-    - name: Extract kubecolor
       ansible.builtin.unarchive:
-        src: /tmp/kubecolor.tar.gz
+        src: "https://github.com/hidetatz/kubecolor/releases/download/{{ latest_versions.kubecolor }}/kubecolor_{{ latest_versions.kubecolor | regex_replace('^v','') }}_Linux_x86_64.tar.gz"
         dest: "{{ bin_dir }}"
+        mode: '0644'
         remote_src: true
-        creates: "{{ bin_dir }}/kubecolor"
-
+        include: ["kubecolor"]
+        
     ######################################################################
     # Install kubectx and kubens (same repo)
     ######################################################################
