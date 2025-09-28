@@ -3,17 +3,13 @@
   hosts: all
   become: true
 
-  tasks:
-    - name: Debug
-      ansible.builtin.debug:
-        var: k8s_version
-        
+  tasks:        
     - name: Add Kubernetes APT repository
       ansible.builtin.deb822_repository:
         name: kubernetes
         types: [deb]
         uris: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/"
-        signed_by: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/Release.key"
+        signed_by: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_version.split('.')[:2] | join('.') }}/deb/Release.key"
         suites: [/]
         state: present
         enabled: yes
