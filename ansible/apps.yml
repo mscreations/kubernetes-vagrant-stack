@@ -15,6 +15,7 @@
       nerdctl: "https://api.github.com/repos/containerd/nerdctl/releases/latest"
       dive: "https://api.github.com/repos/wagoodman/dive/releases/latest"
       arkade: "https://api.github.com/repos/alexellis/arkade/releases/latest"
+      yh: "https://api.github.com/repos/andreazorzetto/yh/releases/latest"
 
   tasks:
     ######################################################################
@@ -57,18 +58,11 @@
     - name: Install latest helm
       ansible.builtin.unarchive:
         src: "https://get.helm.sh/helm-{{ latest_versions.helm }}-linux-amd64.tar.gz"
-        dest: /tmp
+        dest: "{{ bin_dir }}"
+        include: ["linux-amd64/helm"]
+        extra_opts: ["--strip-components=1"]
         remote_src: true
-      register: helm_extract
-      changed_when: false
-
-    - name: Move helm binary
-      ansible.builtin.copy:
-        src: "/tmp/linux-amd64/helm"
-        dest: "{{ bin_dir }}/helm"
         mode: '0755'
-        remote_src: true
-      when: helm_extract is changed
 
     ######################################################################
     # Install jq
@@ -186,3 +180,14 @@
         url: "https://github.com/alexellis/arkade/releases/download/{{ latest_versions.arkade }}/arkade"
         dest: "{{ bin_dir }}/arkade"
         mode: '0755'
+
+    ######################################################################
+    # Install yh
+    ######################################################################
+    - name: Install latest yh
+      ansible.builtin.unarchive:
+        src: "https://github.com/andreazorzetto/yh/releases/download/{{ latest_versions.yh }}/yh-linux-amd64.zip"
+        dest: "{{ bin_dir }}"
+        remote_src: true
+        mode: '0755'
+        creates: "{{ bin_dir }}/yh"
