@@ -17,7 +17,7 @@
       arkade: "https://api.github.com/repos/alexellis/arkade/releases/latest"
       yh: "https://api.github.com/repos/andreazorzetto/yh/releases/latest"
       etcdutl: "https://api.github.com/repos/etcd-io/etcd/releases/latest"
-      
+
   tasks:
     ######################################################################
     # Dynamic installers for GitHub-hosted tools
@@ -64,7 +64,7 @@
         extra_opts: ["--strip-components=1"]
         remote_src: true
         mode: '0755'
-        creates: "{{ bin_dir }}/helm
+        creates: "{{ bin_dir }}/helm"
 
     ######################################################################
     # Install jq
@@ -98,7 +98,7 @@
           - --transform
           - "s|krew-linux_amd64|krew|"
         mode: '0755'
-        creates: "{{ bin_dir }}/krew
+        creates: "{{ bin_dir }}/krew"
 
     ######################################################################
     # Install kubecolor
