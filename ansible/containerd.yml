@@ -15,6 +15,7 @@
       - lsb-release 
       - socat
       - python3-passlib
+      - unzip
 
   tasks:
     - name: Update APT caches

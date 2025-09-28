@@ -90,18 +90,14 @@
     - name: Install latest krew
       ansible.builtin.unarchive:
         src: "https://github.com/kubernetes-sigs/krew/releases/download/{{ latest_versions.krew }}/krew-linux_amd64.tar.gz"
-        dest: /tmp
+        dest: "{{ bin_dir }}"
         remote_src: true
-      register: krew_extract
-      changed_when: false
-
-    - name: Move krew binary
-      ansible.builtin.copy:
-        src: "/tmp/krew-linux_amd64"
-        dest: "{{ bin_dir }}/krew"
+        include:
+          - "krew-linux_amd64"
+        extra_opts:
+          - --transform
+          - "s|krew-linux_amd64|krew|"
         mode: '0755'
-        remote_src: true
-      when: krew_extract is changed
 
     ######################################################################
     # Install kubecolor
