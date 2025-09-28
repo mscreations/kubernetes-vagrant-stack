@@ -4,6 +4,10 @@
   become: true
 
   tasks:
+    - name: Debug
+      ansible.builtin.debug:
+        var: k8s_version
+        
     - name: Add Kubernetes APT repository
       ansible.builtin.deb822_repository:
         name: kubernetes
