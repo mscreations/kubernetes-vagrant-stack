@@ -11,9 +11,8 @@
           (?i)Password: "vagrant"
       register: su_result
       ignore_errors: true
-      changed_when: false
       become_user: vagrant
-      failed_when: "'uid=1200(vagrant) gid=1200(vagrant) groups=1200(vagrant)' in su_result.stdout"
+      changed_when: "'uid=1200(vagrant) gid=1200(vagrant) groups=1200(vagrant)' in su_result.stdout"
 
     - name: Generate SHA512 password hash on target host
       ansible.builtin.shell: |
