@@ -92,8 +92,6 @@
         src: "https://github.com/kubernetes-sigs/krew/releases/download/{{ latest_versions.krew }}/krew-linux_amd64.tar.gz"
         dest: "{{ bin_dir }}"
         remote_src: true
-        include:
-          - "krew-linux_amd64"
         extra_opts:
           - --transform
           - "s|krew-linux_amd64|krew|"
