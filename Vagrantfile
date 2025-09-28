@@ -112,14 +112,24 @@ Vagrant.configure("2") do |config|
     end
   end
 
-  config.trigger.before :destroy do |trigger|
-  trigger.info = "Disconnecting from the domain"
-  trigger.on_error = :continue
-  trigger.run_remote = {
-    path: "/vagrant/unjoin_domain.sh", 
-    env: { 
-      "DOMAIN_PASS" => ENV['DOMAIN_PASSWORD']
+  config.trigger.before :up do |trigger|
+    trigger.info = "Resetting UUID"
+    trigger.on_error = :continue
+    trigger.run = {
+      inline: <<-POWERSHELL
+        powershell -ExecutionPolicy Bypass -File "reset_uuid.ps1" -VMName "#{config.vm.hostname}"
+      POWERSHELL
     }
-  }
+  end
+
+  config.trigger.before :destroy do |trigger|
+    trigger.info = "Disconnecting from the domain"
+    trigger.on_error = :continue
+    trigger.run_remote = {
+      path: "/vagrant/unjoin_domain.sh", 
+      env: { 
+        "DOMAIN_PASS" => ENV['DOMAIN_PASSWORD']
+      }
+    }
   end
 end
