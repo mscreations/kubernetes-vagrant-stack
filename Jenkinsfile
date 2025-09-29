@@ -4,7 +4,7 @@ pipeline {
         ansiColor('xterm')
         timestamps()
         disableConcurrentBuilds()
-        buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '30', numToKeepStr: '5'))
+        buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '30', numToKeepStr: '15'))
     }
     environment {
         VAGRANT_DOTFILE_PATH='D:\\Jenkins\\.vagrant'
@@ -12,7 +12,6 @@ pipeline {
         VAGRANT_INSTALL_LOCAL_PLUGINS=1
     }
     triggers {
-        //pollSCM('H/15 * * * *')   // poll every 15 minutes
         pollSCM('*/2 * * * *')
     }
     parameters {
@@ -30,11 +29,24 @@ pipeline {
         string defaultValue: '32768', name: 'WORKER_MAX_MEMORY', trim: true
     }
     stages {
+        stage('Generate Token') {
+            agent { label 'linux' }   // run this stage on your Linux agent
+            steps {
+                script {
+                    def token = sh(
+                        script: "tr -dc 'a-z0-9' </dev/urandom | head -c6 && echo -n '.' && tr -dc 'a-z0-9' </dev/urandom | head -c16",
+                        returnStdout: true
+                    ).trim()
+                    echo "Generated token: ${token}"
+                    env.RANDOM_TOKEN = token
+                }
+            }
+        }
         stage('Checkout') {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: '*/main']],
+                    branches: [[name: '*/dev']],
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [[$class: 'WipeWorkspace']], // cleans workspace first
                     userRemoteConfigs: [[url: 'git@github.com:mscreations/kubernetes-vagrant-stack.git', credentialsId: 'Github']]
@@ -78,6 +90,33 @@ pipeline {
                     ]
                 ) {
                     bat "vagrant up --provision $VAGRANT_EXTRA_ARGS"    // Ensure provisioners are rerun.
+                }
+            }
+        }
+        stage('Ensure Pull Request') {
+            when {
+                branch 'dev'
+            }
+            agent { label 'linux' }
+            steps {
+                withCredentials([string(credentialsId: 'GithubToken', variable: 'GITHUB_TOKEN')]) {
+                    sh '''
+                        set -e
+                        
+                        existing_pr=$(gh pr list --base main --head dev --json number --jq '.[0].number')
+
+                        if [ -n "$existing_pr" ]; then
+                          echo "PR #$existing_pr exists. Commenting..."
+                          gh pr comment $existing_pr --body "✅ Jenkins pipeline succeeded for commit $(git rev-parse --short HEAD)"
+                        else
+                          echo "No PR found. Creating a new one..."
+                          gh pr create \
+                            --base main \
+                            --head dev \
+                            --title "Promote dev to main" \
+                            --body "Automated PR created by Jenkins after successful pipeline run."
+                        fi
+                    '''
                 }
             }
         }
