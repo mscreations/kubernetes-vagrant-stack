@@ -86,6 +86,11 @@ Vagrant.configure("2") do |config|
       end
 
       node.vm.provider :hyperv do |h, override|
+        
+        created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "k8s (#{server[NODE_NAME]})"`
+        p "Check status of k8s (#{server[NODE_NAME]})"
+        p "Status #{created}"
+
         h.memory      = server[MAX_MEMORY]
         h.cpus        = server[MAX_CPUS]
         h.vmname      = "k8s (#{server[NODE_NAME]})"
@@ -103,13 +108,13 @@ Vagrant.configure("2") do |config|
 
         # Manually add in DHCP reservation for VM
         override.trigger.after :'VagrantPlugins::HyperV::Action::Import', type: :action do |trigger|
-          trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']}"}
+          trigger.run = {inline: "./powershell/dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']}"}
         end
         override.trigger.after :'VagrantPlugins::HyperV::Action::Import', type: :action do |trigger|
-          trigger.run = {inline: "./reset_uuid.ps1 -VMName \"k8s (#{server[NODE_NAME]})\""}
+          trigger.run = {inline: "./powershell/reset_uuid.ps1 -VMName \"k8s (#{server[NODE_NAME]})\""}
         end
         override.trigger.before :'VagrantPlugins::HyperV::Action::DeleteVM', type: :action do |trigger|
-          trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']} -RemoveReservation"}
+          trigger.run = {inline: "./powershell/dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']} -RemoveReservation"}
         end
       end
     end
