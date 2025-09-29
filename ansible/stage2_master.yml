@@ -92,7 +92,7 @@
             balance leastconn
             timeout server 10800s
             {% for ip in master_ips %}
-            server kmaster{{ (node_ip.split('.')[-1] | int) - 200 }} {{ node_ip }}:6444 check
+            server kmaster{{ (ip.split('.')[-1] | int) - 200 }} {{ ip }}:6444 check
             {% endfor %}
       when: setup_lb
     
