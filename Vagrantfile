@@ -24,6 +24,8 @@ CREATED = 6
 
 j = 0
 servers = Array.new
+master_ips = Array.new
+worker_ips = Array.new
 (0..(MASTER_NODES_COUNT - 1)).each do |i|
   if i == 0
     mode = "init"
@@ -32,11 +34,13 @@ servers = Array.new
   end
   created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "k8s (kmaster#{i+1})"`.strip
   servers.push(["kmaster#{i+1}", MASTER_MAX_MEMORY, MASTER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode, created])
+  master_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
   j += 1
 end
 (0..(WORKER_NODES_COUNT - 1)).each do |i|
     created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "k8s (kworker#{i+1})"`.strip
     servers.push(["kworker#{i+1}", WORKER_MAX_MEMORY, WORKER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", "worker", created])
+    worker_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
     j += 1
 end
 
@@ -123,7 +127,9 @@ Vagrant.configure("2") do |config|
           ansible.playbook    = "ansible/stage2_master.yml"
           ansible.extra_vars = {
             mode: server[MODE],
-            setup_lb: MASTER_NODES_COUNT > 1
+            setup_lb: MASTER_NODES_COUNT > 1,
+            master_ips: master_ips,
+            node_ip: server[IP_ADDRESS]
           }
         end
       end

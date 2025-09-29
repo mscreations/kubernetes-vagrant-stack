@@ -11,3 +11,17 @@
     - name: DEGUG
       ansible.builtin.debug:
         var: setup_lb
+
+    - name: DEBUG
+      ansible.builtin.debug:
+        var: master_ips
+
+    - name: DEBUG
+      ansible.builtin.debug:
+        msg: "{{ master_ips | reject('eq', node_ip) | list) }}"
+
+    - name: Install keepalived
+      ansible.builtin.apt:
+        name: keepalived
+        state: present
+      when: setup_lb
