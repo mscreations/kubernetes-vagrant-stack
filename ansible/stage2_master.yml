@@ -18,21 +18,26 @@
     - name: Calculate node priority
       ansible.builtin.set_fact:
         node_priority: >-
-          {{ 250 - 50 * ((node_ip.split('.')[-1] | int) - 200) }}
+          {{ 130 - 10 * ((node_ip.split('.')[-1] | int) - 200) }}
       when: setup_lb
 
     - name: Configure keepalived
       ansible.builtin.copy:
         dest: "/etc/keepalived/keepalived.conf"
         content: |
+          vrrp_track_process haproxy-check {
+            process haproxy
+            weight 30
+          }
           global_defs {
             router_id KubernetesVIP
           }
 
           vrrp_instance APIServerVIP {
             interface eth0
-            state {{ (mode == "init") | ternary("MASTER", "BACKUP") }}
+            state BACKUP
             priority {{ node_priority }}
+            unicast_src_ip {{ node_ip }}
             virtual_router_id 61
             advert_int 1
 
@@ -43,12 +48,16 @@
 
             unicast_peer {
             {% for ip in filtered_ips %}
-              {{ ip }}
-            {% endfor %}
+            {{ ip }}
+            {% endfor -%}
             }
 
             virtual_ipaddress {
               {{ network_prefix }}.200/24
+            }
+
+            track_process {
+              haproxy-check
             }
           }
         owner: root
@@ -61,7 +70,7 @@
         name: keepalived
         daemon_reload: true
         enabled: true
-        state: started
+        state: restarted
       when: setup_lb
 
     - name: Install haproxy
@@ -80,19 +89,20 @@
             stats uri /haproxy?stats
 
           frontend kube_api_server
-            bind 0.0.0.0:6443
+            bind 0.0.0.0:443
             mode tcp
             option tcplog
             timeout client 10800s
-            default_backend controlPlanes
+            default_backend k8s-api
 
-          backend controlPlanes
+          backend k8s-api
             mode tcp
-            option tcplog
-            balance leastconn
+            option tcp-check
+            balance roundrobin
             timeout server 10800s
-            {% for ip in master_ips %}
-            server kmaster{{ (ip.split('.')[-1] | int) - 200 }} {{ ip }}:6444 check
+            default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
+            {% for ip in master_ips -%}
+            server kmaster{{ (ip.split('.')[-1] | int) - 200 }} {{ ip }}:6443 check
             {% endfor %}
       when: setup_lb
     
