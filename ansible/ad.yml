@@ -40,7 +40,6 @@
       when: domain not in realm_status.stdout
       register: realm_join
       failed_when: "'Already joined' not in realm_join.stderr and realm_join.rc != 0"
-      notify: Reboot
  
     - name: Enable mkhomedir for PAM
       ansible.builtin.command: pam-auth-update --enable mkhomedir
@@ -77,8 +76,3 @@
         owner: root
         group: root
         mode: '0600'
-
-  handlers:
-    - name: Reboot
-      ansible.builtin.debug:
-        msg: "THE SERVER WILL NEED REBOOTED BEFORE SIGNING IN WITH DOMAIN USER"

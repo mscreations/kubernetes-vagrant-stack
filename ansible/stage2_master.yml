@@ -1,0 +1,105 @@
+---
+- name: Stage 2 Controlplane Nodes
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Install keepalived
+      ansible.builtin.apt:
+        name: keepalived
+        state: present
+      when: setup_lb
+
+    - name: Get unicast peers
+      ansible.builtin.set_fact:
+        filtered_ips: "{{ master_ips | reject('eq', node_ip) | list }}"
+      when: setup_lb
+
+    - name: Calculate node priority
+      ansible.builtin.set_fact:
+        node_priority: >-
+          {{ 250 - 50 * ((node_ip.split('.')[-1] | int) - 200) }}
+      when: setup_lb
+
+    - name: Configure keepalived
+      ansible.builtin.copy:
+        dest: "/etc/keepalived/keepalived.conf"
+        content: |
+          global_defs {
+            router_id KubernetesVIP
+          }
+
+          vrrp_instance APIServerVIP {
+            interface eth0
+            state {{ (mode == "init") | ternary("MASTER", "BACKUP") }}
+            priority {{ node_priority }}
+            virtual_router_id 61
+            advert_int 1
+
+            authentication {
+              auth_type PASS
+              auth_pass N7v!pQ3z$L9rX2dF
+            }
+
+            unicast_peer {
+            {% for ip in filtered_ips %}
+              {{ ip }}
+            {% endfor %}
+            }
+
+            virtual_ipaddress {
+              {{ network_prefix }}.200/24
+            }
+          }
+        owner: root
+        group: root
+        mode: '0644'
+      when: setup_lb
+
+    - name: Enable keepalived
+      ansible.builtin.systemd:
+        name: keepalived
+        daemon_reload: true
+        enabled: true
+        state: started
+      when: setup_lb
+
+    - name: Install haproxy
+      ansible.builtin.apt:
+        name: haproxy
+        state: present
+      when: setup_lb
+
+    - name: Configure haproxy
+      ansible.builtin.blockinfile:
+        path: /etc/haproxy/haproxy.cfg
+        block: |
+          frontend http_stats
+            bind *:8080
+            mode http
+            stats uri /haproxy?stats
+
+          frontend kube_api_server
+            bind 0.0.0.0:6443
+            mode tcp
+            option tcplog
+            timeout client 10800s
+            default_backend controlPlanes
+
+          backend controlPlanes
+            mode tcp
+            option tcplog
+            balance leastconn
+            timeout server 10800s
+            {% for ip in master_ips %}
+            server kmaster{{ (ip.split('.')[-1] | int) - 200 }} {{ ip }}:6444 check
+            {% endfor %}
+      when: setup_lb
+    
+    - name: Enable haproxy
+      ansible.builtin.systemd:
+        name: haproxy
+        daemon_reload: true
+        enabled: true
+        state: restarted
+      when: setup_lb

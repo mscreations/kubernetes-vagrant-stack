@@ -20,20 +20,27 @@ MAX_CPUS = 2
 MAC_ADDRESS = 3
 IP_ADDRESS = 4
 MODE = 5
+CREATED = 6
 
 j = 0
 servers = Array.new
+master_ips = Array.new
+worker_ips = Array.new
 (0..(MASTER_NODES_COUNT - 1)).each do |i|
   if i == 0
     mode = "init"
   else
     mode = "master"
   end
-  servers.push(["kmaster#{i+1}", MASTER_MAX_MEMORY, MASTER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode])
+  created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "k8s (kmaster#{i+1})"`.strip
+  servers.push(["kmaster#{i+1}", MASTER_MAX_MEMORY, MASTER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode, created])
+  master_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
   j += 1
 end
 (0..(WORKER_NODES_COUNT - 1)).each do |i|
-    servers.push(["kworker#{i+1}", WORKER_MAX_MEMORY, WORKER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", "worker"])
+    created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "k8s (kworker#{i+1})"`.strip
+    servers.push(["kworker#{i+1}", WORKER_MAX_MEMORY, WORKER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", "worker", created])
+    worker_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
     j += 1
 end
 
@@ -52,29 +59,6 @@ Vagrant.configure("2") do |config|
   config.vm.synced_folder ".", "/vagrant", mount_options: ["uid=1000", "gid=1000"], smb_username: ENV['DOMAIN_USER'], smb_password: ENV['DOMAIN_PASSWORD']
   config.vm.allow_fstab_modification = true
   
-  # Run customization ansible scripts for all hosts (scripts not in git)
-  # These scripts setup the customized shell that has my specific preferences
-  # Needs to be completed prior to stage 1 as it will patch the profile there.
-  Dir.glob("customize/*.y{a,}ml").each do |playbook|
-    config.vm.provision "ansible_local" do |ansible|
-      ansible.playbook = playbook
-    end
-  end
-
-  # Run customization ansible scripts for all hosts that are stored in git
-  config.vm.provision "ansible_local" do |ansible|
-    ansible.playbook          = "ansible/stage1.yml"
-    ansible.galaxy_role_file  = "ansible/requirements.yml"
-    ansible.extra_vars = {
-      new_ssh_password: ENV['NEW_SSH_PASSWORD'],
-      domain_password: ENV['DOMAIN_PASSWORD'],
-      domain: ENV["DOMAIN"],
-      k8s_version: ENV["K8S_VERSION"]
-    }
-  end
-  
-  config.vm.provision :reload
-
   servers.each do |server|
     config.vm.define server[NODE_NAME] do |node|
       node.vm.network "public_network", bridge: "LAN"
@@ -103,13 +87,53 @@ Vagrant.configure("2") do |config|
 
         # Manually add in DHCP reservation for VM
         override.trigger.after :'VagrantPlugins::HyperV::Action::Import', type: :action do |trigger|
-          trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']}"}
+          trigger.run = {inline: "./powershell/dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']}"}
         end
         override.trigger.after :'VagrantPlugins::HyperV::Action::Import', type: :action do |trigger|
-          trigger.run = {inline: "./reset_uuid.ps1 -VMName \"k8s (#{server[NODE_NAME]})\""}
+          trigger.run = {inline: "./powershell/reset_uuid.ps1 -VMName \"k8s (#{server[NODE_NAME]})\""}
         end
         override.trigger.before :'VagrantPlugins::HyperV::Action::DeleteVM', type: :action do |trigger|
-          trigger.run = {inline: "./dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']} -RemoveReservation"}
+          trigger.run = {inline: "./powershell/dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']} -RemoveReservation"}
+        end
+      end
+
+      # Run customization ansible scripts for all hosts (scripts not in git)
+      # These scripts setup the customized shell that has my specific preferences
+      # Needs to be completed prior to stage 1 as it will patch the profile there.
+      Dir.glob("customize/*.y{a,}ml").each do |playbook|
+        node.vm.provision "ansible_local" do |ansible|
+          ansible.playbook = playbook
+        end
+      end
+
+      # Run customization ansible scripts for all hosts that are stored in git
+      node.vm.provision "ansible_local" do |ansible|
+        ansible.playbook          = "ansible/stage1.yml"
+        ansible.galaxy_role_file  = "ansible/requirements.yml"
+        ansible.extra_vars = {
+          new_ssh_password: ENV['NEW_SSH_PASSWORD'],
+          domain_password: ENV['DOMAIN_PASSWORD'],
+          domain: ENV["DOMAIN"],
+          k8s_version: ENV["K8S_VERSION"]
+        }
+      end
+
+      if server[CREATED] == "NotCreated"
+        node.vm.provision :reload
+      else
+        puts "Reload skipped as server is not new"
+      end
+
+      if server[MODE] == "init" or server[MODE] == "master"
+        node.vm.provision "ansible_local" do |ansible|
+          ansible.playbook    = "ansible/stage2_master.yml"
+          ansible.extra_vars = {
+            mode: server[MODE],
+            setup_lb: MASTER_NODES_COUNT > 1,
+            master_ips: master_ips,
+            node_ip: server[IP_ADDRESS],
+            network_prefix: ENV['NETWORK_PREFIX']
+          }
         end
       end
     end
