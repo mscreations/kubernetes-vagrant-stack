@@ -18,7 +18,7 @@
 
     - name: DEBUG
       ansible.builtin.debug:
-        msg: "{{ master_ips | reject('eq', node_ip) | list) }}"
+        msg: "{{ master_ips | reject('eq', node_ip) | list }}"
 
     - name: Install keepalived
       ansible.builtin.apt:
