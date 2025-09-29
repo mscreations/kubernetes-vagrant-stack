@@ -33,7 +33,6 @@
             interface eth0
             state {{ (mode == "init") | ternary("MASTER", "BACKUP") }}
             priority {{ node_priority }}
-            mcast_src_ip {{ node_ip }}
             virtual_router_id 61
             advert_int 1
 
@@ -63,4 +62,44 @@
         daemon_reload: true
         enabled: true
         state: started
+      when: setup_lb
+
+    - name: Install haproxy
+      ansible.builtin.apt:
+        name: haproxy
+        state: present
+      when: setup_lb
+
+    - name: Configure haproxy
+      ansible.builtin.blockinfile:
+        path: /etc/haproxy/haproxy.cfg
+        block: |
+          frontend http_stats
+            bind *:8080
+            mode http
+            stats uri /haproxy?stats
+
+          frontend kube_api_server
+            bind 0.0.0.0:6443
+            mode tcp
+            option tcplog
+            timeout client 10800s
+            default_backend controlPlanes
+
+          backend controlPlanes
+            mode tcp
+            option tcplog
+            balance leastconn
+            timeout server 10800s
+            {% for ip in master_ips %}
+            server kmaster{{ (node_ip.split('.')[-1] | int) - 200 }} {{ node_ip }}:6444 check
+            {% endfor %}
+      when: setup_lb
+    
+    - name: Enable haproxy
+      ansible.builtin.systemd:
+        name: haproxy
+        daemon_reload: true
+        enabled: true
+        state: restarted
       when: setup_lb
