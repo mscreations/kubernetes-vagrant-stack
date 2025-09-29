@@ -125,6 +125,7 @@ Vagrant.configure("2") do |config|
             mode: server[MODE],
             setup_lb: MASTER_NODES_COUNT > 1
           }
+        end
       end
     end
   end
