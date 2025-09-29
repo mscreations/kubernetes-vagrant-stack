@@ -94,9 +94,6 @@ pipeline {
             }
         }
         stage('Ensure Pull Request') {
-            when {
-                branch 'dev'
-            }
             agent { label 'linux' }
             steps {
                 withCredentials([string(credentialsId: 'GithubToken', variable: 'GITHUB_TOKEN')]) {
