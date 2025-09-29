@@ -15,16 +15,12 @@
         filtered_ips: "{{ master_ips | reject('eq', node_ip) | list }}"
       when: setup_lb
 
-    - name: Get node ip
+    - name: Calculate node priority
       ansible.builtin.set_fact:
-        last_digit: "{{ node_ip.split('.')[-1] | int }}"
+        node_priority: >-
+          {{ 250 - 50 * ((node_ip.split('.')[-1] | int) - 200) }}
       when: setup_lb
 
-    - name: Get priority
-      ansible.builtin.set_fact:
-        node_priority: "{{ 250 - 50 * (last_digit - 200) }}"
-      when: setup_lb
-    
     - name: Configure keepalived
       ansible.builtin.copy:
         dest: "/etc/keepalived/keepalived.conf"
