@@ -46,6 +46,8 @@ servers.each do |server|
   puts server.map { |v| v.to_s.ljust(16) }.join("| ")
 end
 
+created = "NotCreated"
+
 Vagrant.configure("2") do |config|
   config.vagrant.plugins = ['vagrant-reload']
   config.vm.box = VAGRANT_BOX
