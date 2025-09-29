@@ -1,0 +1,13 @@
+---
+- name: Stage 2 Controlplane Nodes
+  hosts: all
+  become: true
+
+  tasks:
+    - name: DEGUG
+      ansible.builtin.debug:
+        var: mode
+
+    - name: DEGUG
+      ansible.builtin.debug:
+        var: setup_lb

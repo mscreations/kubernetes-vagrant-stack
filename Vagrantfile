@@ -117,6 +117,15 @@ Vagrant.configure("2") do |config|
       if server[CREATED] == "NotCreated"
         node.vm.provision :reload
       end
+
+      if server[MODE] == "init" or server[MODE] == "master"
+        node.vm.provision "ansible_local" do |ansible|
+          ansible.playbook    = "ansible/stage2_master.yml"
+          ansible.extra_vars = {
+            mode: server[MODE],
+            setup_lb: MASTER_NODES_COUNT > 1
+          }
+      end
     end
   end
 
