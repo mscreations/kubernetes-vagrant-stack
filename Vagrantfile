@@ -73,6 +73,7 @@ Vagrant.configure("2") do |config|
     }
   end
   
+  p "Status #{created}"
   config.vm.provision :reload
 
   servers.each do |server|
