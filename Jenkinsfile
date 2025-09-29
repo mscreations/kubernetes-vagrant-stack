@@ -95,6 +95,9 @@ pipeline {
         }
         stage('Ensure Pull Request') {
             agent { label 'linux' }
+            when {
+                changeset "**/*"
+            }
             steps {
                 withCredentials([string(credentialsId: 'GithubToken', variable: 'GITHUB_TOKEN')]) {
                     sh '''
