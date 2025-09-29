@@ -120,6 +120,8 @@ Vagrant.configure("2") do |config|
 
       if server[CREATED] == "NotCreated"
         node.vm.provision :reload
+      else
+        puts "Reload skipped as server is not new"
       end
 
       if server[MODE] == "init" or server[MODE] == "master"
