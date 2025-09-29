@@ -20,6 +20,7 @@ MAX_CPUS = 2
 MAC_ADDRESS = 3
 IP_ADDRESS = 4
 MODE = 5
+CREATED = 6
 
 j = 0
 servers = Array.new
@@ -29,11 +30,13 @@ servers = Array.new
   else
     mode = "master"
   end
-  servers.push(["kmaster#{i+1}", MASTER_MAX_MEMORY, MASTER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode])
+  created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "k8s (kmaster#{i+1})"`.strip
+  servers.push(["kmaster#{i+1}", MASTER_MAX_MEMORY, MASTER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode, created])
   j += 1
 end
 (0..(WORKER_NODES_COUNT - 1)).each do |i|
-    servers.push(["kworker#{i+1}", WORKER_MAX_MEMORY, WORKER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", "worker"])
+    created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "k8s (kworker#{i+1})"`.strip
+    servers.push(["kworker#{i+1}", WORKER_MAX_MEMORY, WORKER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", "worker", created])
     j += 1
 end
 
@@ -45,8 +48,6 @@ puts "-" * ((headers.size * 16) + 10)
 servers.each do |server|
   puts server.map { |v| v.to_s.ljust(16) }.join("| ")
 end
-
-created = "NotCreated"
 
 Vagrant.configure("2") do |config|
   config.vagrant.plugins = ['vagrant-reload']
@@ -65,11 +66,6 @@ Vagrant.configure("2") do |config|
       end
 
       node.vm.provider :hyperv do |h, override|
-        
-        created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "k8s (#{server[NODE_NAME]})"`
-        p "Check status of k8s (#{server[NODE_NAME]})"
-        p "Status #{created}"
-
         h.memory      = server[MAX_MEMORY]
         h.cpus        = server[MAX_CPUS]
         h.vmname      = "k8s (#{server[NODE_NAME]})"
@@ -96,32 +92,33 @@ Vagrant.configure("2") do |config|
           trigger.run = {inline: "./powershell/dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']} -RemoveReservation"}
         end
       end
+
+      # Run customization ansible scripts for all hosts (scripts not in git)
+      # These scripts setup the customized shell that has my specific preferences
+      # Needs to be completed prior to stage 1 as it will patch the profile there.
+      Dir.glob("customize/*.y{a,}ml").each do |playbook|
+        node.vm.provision "ansible_local" do |ansible|
+          ansible.playbook = playbook
+        end
+      end
+
+      # Run customization ansible scripts for all hosts that are stored in git
+      node.vm.provision "ansible_local" do |ansible|
+        ansible.playbook          = "ansible/stage1.yml"
+        ansible.galaxy_role_file  = "ansible/requirements.yml"
+        ansible.extra_vars = {
+          new_ssh_password: ENV['NEW_SSH_PASSWORD'],
+          domain_password: ENV['DOMAIN_PASSWORD'],
+          domain: ENV["DOMAIN"],
+          k8s_version: ENV["K8S_VERSION"]
+        }
+      end
+
+      if server[CREATED] == "NotCreated"
+        node.vm.provision :reload
+      end
     end
   end
-
-  # Run customization ansible scripts for all hosts (scripts not in git)
-  # These scripts setup the customized shell that has my specific preferences
-  # Needs to be completed prior to stage 1 as it will patch the profile there.
-  Dir.glob("customize/*.y{a,}ml").each do |playbook|
-    config.vm.provision "ansible_local" do |ansible|
-      ansible.playbook = playbook
-    end
-  end
-
-  # Run customization ansible scripts for all hosts that are stored in git
-  config.vm.provision "ansible_local" do |ansible|
-    ansible.playbook          = "ansible/stage1.yml"
-    ansible.galaxy_role_file  = "ansible/requirements.yml"
-    ansible.extra_vars = {
-      new_ssh_password: ENV['NEW_SSH_PASSWORD'],
-      domain_password: ENV['DOMAIN_PASSWORD'],
-      domain: ENV["DOMAIN"],
-      k8s_version: ENV["K8S_VERSION"]
-    }
-  end
-  
-  p "Status #{created}"
-  config.vm.provision :reload
 
   config.trigger.before :destroy do |trigger|
     trigger.info = "Disconnecting from the domain"
