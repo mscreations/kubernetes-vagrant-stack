@@ -31,7 +31,7 @@
 
           vrrp_instance APIServerVIP {
             interface eth0
-            state {{ mode == "init" | ternary("MASTER", "BACKUP") }}
+            state {{ (mode == "init") | ternary("MASTER", "BACKUP") }}
             priority {{ node_priority }}
             mcast_src_ip {{ node_ip }}
             virtual_router_id 61
