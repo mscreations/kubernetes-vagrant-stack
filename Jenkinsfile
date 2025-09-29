@@ -21,7 +21,7 @@ pipeline {
         string defaultValue: '172.29.125', name: 'NETWORK_PREFIX', trim: true
         string defaultValue: '192.168.0.0/16', name: 'POD_NETWORK', trim: true
         string defaultValue: 'mscreations/ubuntu2404', name: 'VAGRANT_BOX', trim: true
-        string defaultValue: '1', name: 'MASTER_NODES_COUNT', trim: true
+        string defaultValue: '3', name: 'MASTER_NODES_COUNT', trim: true
         string defaultValue: '4', name: 'MASTER_MAX_CPUS', trim: true
         string defaultValue: '4096', name: 'MASTER_MAX_MEMORY', trim: true
         string defaultValue: '0', name: 'WORKER_NODES_COUNT', trim: true
