@@ -16,6 +16,7 @@ pipeline {
     }
     parameters {
         string defaultValue: "1.34", name: 'K8S_VERSION', trim: true
+        booleanParam 'TEARDOWN'
         string name: 'VAGRANT_EXTRA_ARGS', trim: true
         booleanParam 'UPDATE_BOX'
         string defaultValue: '172.29.125', name: 'NETWORK_PREFIX', trim: true
@@ -30,6 +31,9 @@ pipeline {
     }
     stages {
         stage('Generate Token') {
+            when {
+                expression { !params.TEARDOWN }
+            }
             agent { label 'linux' }   // run this stage on your Linux agent
             steps {
                 script {
@@ -54,6 +58,9 @@ pipeline {
             }
         }
         stage('Populate customization directory') {
+            when {
+                expression { !params.TEARDOWN }
+            }
             steps {
                 powershell """
                     Copy-Item -Path '..\\..\\Kubernetes\\customize\\*' -Destination 'customize\\' -Recurse -Force
@@ -62,13 +69,16 @@ pipeline {
         }
         stage('Update Vagrant Box') {
             when {
-                expression { params.UPDATE_BOX }
+                expression { !params.TEARDOWN && params.UPDATE_BOX }
             }
             steps {
                 bat "vagrant box update"
             }
         }
         stage('Run Vagrant') {
+            when {
+                expression { !params.TEARDOWN }
+            }
             steps {
                 withInfisical(
                     configuration: [
@@ -96,7 +106,10 @@ pipeline {
         stage('Ensure Pull Request') {
             agent { label 'linux' }
             when {
-                changeset "**/*"
+                allOf {
+                    changeset "**/*"
+                    expression { !params.TEARDOWN }
+                }
             }
             steps {
                 withCredentials([string(credentialsId: 'GithubToken', variable: 'GITHUB_TOKEN')]) {
@@ -117,6 +130,37 @@ pipeline {
                             --body "Automated PR created by Jenkins after successful pipeline run."
                         fi
                     '''
+                }
+            }
+        }
+        stage('Teardown') {
+            when {
+                expression { params.TEARDOWN }
+            }
+            steps {
+                withInfisical(
+                    configuration: [
+                        infisicalCredentialId: 'infisical', 
+                        infisicalEnvironmentSlug: 'prod', 
+                        infisicalProjectSlug: 'homelab-b-h-sw', 
+                        infisicalUrl: 'https://app.infisical.com'
+                    ],
+                    infisicalSecrets: [
+                        infisicalSecret(
+                            includeImports: true, path: '/', secretValues: [
+                                [infisicalKey: 'DOMAIN_USER'], 
+                                [infisicalKey: 'DOMAIN_PASSWORD'], 
+                                [infisicalKey: 'DOMAIN'], 
+                                [infisicalKey: 'DHCP_SERVER']
+                            ]
+                        )
+                    ]
+                ) {
+                    bat """
+                        set MASTER_NODES_COUNT=3
+                        set WORKER_NODES_COUNT=3
+                        vagrant destroy -f
+                    """
                 }
             }
         }
