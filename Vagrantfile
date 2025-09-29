@@ -52,30 +52,6 @@ Vagrant.configure("2") do |config|
   config.vm.synced_folder ".", "/vagrant", mount_options: ["uid=1000", "gid=1000"], smb_username: ENV['DOMAIN_USER'], smb_password: ENV['DOMAIN_PASSWORD']
   config.vm.allow_fstab_modification = true
   
-  # Run customization ansible scripts for all hosts (scripts not in git)
-  # These scripts setup the customized shell that has my specific preferences
-  # Needs to be completed prior to stage 1 as it will patch the profile there.
-  Dir.glob("customize/*.y{a,}ml").each do |playbook|
-    config.vm.provision "ansible_local" do |ansible|
-      ansible.playbook = playbook
-    end
-  end
-
-  # Run customization ansible scripts for all hosts that are stored in git
-  config.vm.provision "ansible_local" do |ansible|
-    ansible.playbook          = "ansible/stage1.yml"
-    ansible.galaxy_role_file  = "ansible/requirements.yml"
-    ansible.extra_vars = {
-      new_ssh_password: ENV['NEW_SSH_PASSWORD'],
-      domain_password: ENV['DOMAIN_PASSWORD'],
-      domain: ENV["DOMAIN"],
-      k8s_version: ENV["K8S_VERSION"]
-    }
-  end
-  
-  p "Status #{created}"
-  config.vm.provision :reload
-
   servers.each do |server|
     config.vm.define server[NODE_NAME] do |node|
       node.vm.network "public_network", bridge: "LAN"
@@ -120,6 +96,30 @@ Vagrant.configure("2") do |config|
       end
     end
   end
+
+  # Run customization ansible scripts for all hosts (scripts not in git)
+  # These scripts setup the customized shell that has my specific preferences
+  # Needs to be completed prior to stage 1 as it will patch the profile there.
+  Dir.glob("customize/*.y{a,}ml").each do |playbook|
+    config.vm.provision "ansible_local" do |ansible|
+      ansible.playbook = playbook
+    end
+  end
+
+  # Run customization ansible scripts for all hosts that are stored in git
+  config.vm.provision "ansible_local" do |ansible|
+    ansible.playbook          = "ansible/stage1.yml"
+    ansible.galaxy_role_file  = "ansible/requirements.yml"
+    ansible.extra_vars = {
+      new_ssh_password: ENV['NEW_SSH_PASSWORD'],
+      domain_password: ENV['DOMAIN_PASSWORD'],
+      domain: ENV["DOMAIN"],
+      k8s_version: ENV["K8S_VERSION"]
+    }
+  end
+  
+  p "Status #{created}"
+  config.vm.provision :reload
 
   config.trigger.before :destroy do |trigger|
     trigger.info = "Disconnecting from the domain"
