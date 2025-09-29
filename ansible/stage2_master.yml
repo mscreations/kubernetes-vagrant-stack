@@ -4,24 +4,67 @@
   become: true
 
   tasks:
-    - name: DEGUG
-      ansible.builtin.debug:
-        var: mode
-
-    - name: DEGUG
-      ansible.builtin.debug:
-        var: setup_lb
-
-    - name: DEBUG
-      ansible.builtin.debug:
-        var: master_ips
-
-    - name: DEBUG
-      ansible.builtin.debug:
-        msg: "{{ master_ips | reject('eq', node_ip) | list }}"
-
     - name: Install keepalived
       ansible.builtin.apt:
         name: keepalived
         state: present
+      when: setup_lb
+
+    - name: Get unicast peers
+      ansible.builtin.set_fact:
+        filtered_ips: "{{ master_ips | reject('eq', node_ip) | list }}"
+      when: setup_lb
+
+    - name: Get node ip
+      ansible.builtin.set_fact:
+        last_digit: "{{ node_ip.split('.')[-1] | int }}"
+      when: setup_lb
+
+    - name: Get priority
+      ansible.builtin.set_fact:
+        node_priority: "{{ 250 - 50 * (last_digit - 200) }}"
+      when: setup_lb
+    
+    - name: Configure keepalived
+      ansible.builtin.copy:
+        dest: "/etc/keepalived/keepalived.conf"
+        content: |
+          global_defs {
+            router_id KubernetesVIP
+          }
+
+          vrrp_instance APIServerVIP {
+            interface eth0
+            state {{ mode == "init" | ternary("MASTER", "BACKUP") }}
+            priority {{ node_priority }}
+            mcast_src_ip {{ node_ip }}
+            virtual_router_id 61
+            advert_int 1
+
+            authentication {
+              auth_type PASS
+              auth_pass N7v!pQ3z$L9rX2dF
+            }
+
+            unicast_peer {
+            {% for ip in filtered_ips %}
+              {{ ip }}
+            {% endfor %}
+            }
+
+            virtual_ipaddress {
+              {{ network_prefix }}.200/24
+            }
+          }
+        owner: root
+        group: root
+        mode: '0644'
+      when: setup_lb
+
+    - name: Enable keepalived
+      ansible.builtin.systemd:
+        name: keepalived
+        daemon_reload: true
+        enabled: true
+        state: started
       when: setup_lb

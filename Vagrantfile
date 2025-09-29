@@ -129,7 +129,8 @@ Vagrant.configure("2") do |config|
             mode: server[MODE],
             setup_lb: MASTER_NODES_COUNT > 1,
             master_ips: master_ips,
-            node_ip: server[IP_ADDRESS]
+            node_ip: server[IP_ADDRESS],
+            network_prefix: ENV['NETWORK_PREFIX']
           }
         end
       end
