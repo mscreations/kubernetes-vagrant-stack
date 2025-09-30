@@ -22,9 +22,9 @@ pipeline {
         string defaultValue: '172.29.125', name: 'NETWORK_PREFIX', trim: true
         string defaultValue: '192.168.0.0/16', name: 'POD_NETWORK', trim: true
         string defaultValue: 'mscreations/ubuntu2404', name: 'VAGRANT_BOX', trim: true
-        string defaultValue: '3', name: 'MASTER_NODES_COUNT', trim: true
-        string defaultValue: '4', name: 'MASTER_MAX_CPUS', trim: true
-        string defaultValue: '4096', name: 'MASTER_MAX_MEMORY', trim: true
+        string defaultValue: '3', name: 'CONTROLPLANE_NODES_COUNT', trim: true
+        string defaultValue: '4', name: 'CONTROLPLANE_MAX_CPUS', trim: true
+        string defaultValue: '4096', name: 'CONTROLPLANE_MAX_MEMORY', trim: true
         string defaultValue: '0', name: 'WORKER_NODES_COUNT', trim: true
         string defaultValue: '16', name: 'WORKER_MAX_CPUS', trim: true
         string defaultValue: '32768', name: 'WORKER_MAX_MEMORY', trim: true
@@ -163,7 +163,7 @@ pipeline {
                     ]
                 ) {
                     bat """
-                        set MASTER_NODES_COUNT=3
+                        set CONTROLPLANE_NODES_COUNT=3
                         set WORKER_NODES_COUNT=3
                         vagrant destroy -f
                     """

@@ -10,7 +10,7 @@
 
     - name: Determine if we should setup LB
       ansible.builtin.set_fact:
-        setup_lb: "{{ (master_ips | length) > 1 }}"
+        setup_lb: "{{ (controlplane_ips | length) > 1 }}"
 
     - name: Install keepalived
       ansible.builtin.apt:
@@ -20,7 +20,7 @@
 
     - name: Get unicast peers
       ansible.builtin.set_fact:
-        filtered_ips: "{{ master_ips | reject('eq', ansible_default_ipv4.address) | list }}"
+        filtered_ips: "{{ controlplane_ips | reject('eq', ansible_default_ipv4.address) | list }}"
       when: setup_lb
 
     - name: Configure keepalived
@@ -103,8 +103,8 @@
             balance roundrobin
             timeout server 10800s
             default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
-            {% for ip in master_ips -%}
-            server kmaster{{ (ip.split('.')[-1] | int) - 200 }} {{ ip }}:6443 check
+            {% for ip in controlplane_ips -%}
+            server kcontrolplane{{ (ip.split('.')[-1] | int) - 200 }} {{ ip }}:6443 check
             {% endfor %}
       when: setup_lb
     
@@ -147,7 +147,7 @@
                      --control-plane \
                      --certificate-key {{ certificate_key }} \
       register: join_cluster
-      when: not k8s_ca.stat.exists and mode == "master"
+      when: not k8s_ca.stat.exists and mode == "controlplane
 
     - name: Create k8s config directory
       ansible.builtin.file:
