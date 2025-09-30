@@ -4,6 +4,10 @@
   become: true
 
   tasks:
+    - name: DEBUG
+      ansible.builtin.debug:
+        var: vars
+        
     - name: Set network_prefix from node's IP addres
       ansible.builtin.set_fact:
         network_prefix: "{{ ansible_default_ipv4.address.split('.')[:3] | join('.') }}"
