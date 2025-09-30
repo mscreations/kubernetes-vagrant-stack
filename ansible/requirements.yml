@@ -1,3 +1,2 @@
 roles:
   - name: geerlingguy.containerd
-  - name: kubernetes.core

@@ -128,7 +128,6 @@ Vagrant.configure("2") do |config|
       if server[MODE] == "init" or server[MODE] == "master"
         node.vm.provision "ansible_local" do |ansible|
           ansible.playbook          = "ansible/stage2_master.yml"
-          ansible.galaxy_role_file  = "ansible/requirements.yml"
           ansible.extra_vars = {
             mode: server[MODE],
             master_ips: master_ips,
