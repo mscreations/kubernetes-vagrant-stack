@@ -171,7 +171,7 @@
       kubernetes.core.helm_repository:
         name: projectcalico
         repo_url: https://docs.tigera.io/calico/charts
-        kubeconfig: /etc/kubernetes/admin.conf
+        kubeconfig: /home/vagrant/.kube/config
       register: calico_repo
       when: mode == "init"
 
@@ -181,7 +181,7 @@
         state: present
         kind: Namespace
         name: tigera-operator
-        kubeconfig: /etc/kubernetes/admin.conf
+        kubeconfig: /home/vagrant/.kube/config
       when: mode == "init"
 
     - name: Install Calico with default Helm values
@@ -191,5 +191,5 @@
         namespace: tigera-operator
         release-namespace: tigera-operator
         state: present
-        kubeconfig: /etc/kubernetes/admin.conf
+        kubeconfig: /home/vagrant/.kube/config
       when: mode == "init"
