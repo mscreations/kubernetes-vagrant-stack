@@ -18,6 +18,7 @@
       - realmd
       - adcli
       - neovim
+      - python3-kubernetes # Required for kubernetes.core ansible
   
   tasks:
     - name: Update all packages

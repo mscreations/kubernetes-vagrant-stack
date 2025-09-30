@@ -4,10 +4,6 @@
   become: true
 
   tasks:
-    - name: DEBUG
-      ansible.builtin.debug:
-        var: vars
-        
     - name: Set network_prefix from node's IP addres
       ansible.builtin.set_fact:
         network_prefix: "{{ ansible_default_ipv4.address.split('.')[:3] | join('.') }}"
@@ -175,8 +171,9 @@
       kubernetes.core.helm_repository:
         name: projectcalico
         repo_url: https://docs.tigera.io/calico/charts
+        kubeconfig: /etc/kubernetes/admin.conf
       register: calico_repo
-      when: init_cluster is succeeded and mode == "init"
+      when: mode == "init"
 
 
     - name: Ensure Tigera operator namespace exists
@@ -184,13 +181,15 @@
         state: present
         kind: Namespace
         name: tigera-operator
-      when: init_cluster is succeeded and mode == "init"
+        kubeconfig: /etc/kubernetes/admin.conf
+      when: mode == "init"
 
     - name: Install Calico with default Helm values
       kubernetes.core.helm:
         name: calico
         chart_ref: projectcalico/tigera-operator
-        namespace: calico-system
-        create_namespace: false
+        namespace: tigera-operator
+        release-namespace: tigera-operator
         state: present
-      when: init_cluster is succeeded and mode == "init"
+        kubeconfig: /etc/kubernetes/admin.conf
+      when: mode == "init"
