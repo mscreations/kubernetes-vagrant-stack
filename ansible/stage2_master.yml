@@ -4,6 +4,14 @@
   become: true
 
   tasks:
+    - name: Set network_prefix from node's IP addres
+      ansible.builtin.set_fact:
+        network_prefix: "{{ ansible_default_ipv4.address.split('.')[:3] | join('.') }}"
+
+    - name: Determine if we should setup LB
+      ansible.builtin.set_fact:
+        setup_lb: "{{ (master_ips | length) > 1 }}"
+
     - name: Install keepalived
       ansible.builtin.apt:
         name: keepalived
@@ -12,13 +20,7 @@
 
     - name: Get unicast peers
       ansible.builtin.set_fact:
-        filtered_ips: "{{ master_ips | reject('eq', node_ip) | list }}"
-      when: setup_lb
-
-    - name: Calculate node priority
-      ansible.builtin.set_fact:
-        node_priority: >-
-          {{ 130 - 10 * ((node_ip.split('.')[-1] | int) - 200) }}
+        filtered_ips: "{{ master_ips | reject('eq', ansible_default_ipv4.address) | list }}"
       when: setup_lb
 
     - name: Configure keepalived
@@ -36,8 +38,8 @@
           vrrp_instance APIServerVIP {
             interface eth0
             state {{ (mode == "init") | ternary("MASTER", "BACKUP") }}
-            priority {{ node_priority }}
-            unicast_src_ip {{ node_ip }}
+            priority {{ 130 - 10 * ((ansible_default_ipv4.address.split('.')[-1] | int) - 200) }}
+            unicast_src_ip {{ ansible_default_ipv4.address }}
             virtual_router_id 61
             advert_int 1
 
@@ -113,3 +115,78 @@
         enabled: true
         state: restarted
       when: setup_lb
+
+    #############################################################################################################
+    # Init Cluster
+    #############################################################################################################
+
+    - name: Check if cluster has been initialized already
+      ansible.builtin.stat:
+        path: /etc/kubernetes/pki/ca.key
+      register: k8s_ca
+
+    - name: Init cluster
+      ansible.builtin.shell: |
+        kubeadm init --pod-network-cidr {{ pod_network_cidr }} \
+                     --token {{ token }} \
+                     {% if setup_lb %}
+                     --control-plane-endpoint {{ network_prefix }}.200:443 \
+                     {% else %}
+                     --apiserver-advertise-address {{ ansible_default_ipv4.address }} \
+                     {% endif %}
+                     --certificate-key {{ certificate_key }} \
+                     --upload-certs
+      register: init_cluster
+      when: not k8s_ca.stat.exists and mode == "init" 
+
+    - name: Join cluster
+      ansible.builtin.shell: |
+        kubeadm join {{ network_prefix }}.200:443 \
+                     --token {{ token }} \
+                     --discovery-token-unsafe-skip-ca-verification \
+                     --control-plane \
+                     --certificate-key {{ certificate_key }} \
+      register: join_cluster
+      when: not k8s_ca.stat.exists and mode == "master"
+
+    - name: Create k8s config directory
+      ansible.builtin.file:
+        path: "/home/vagrant/.kube"
+        state: directory
+        owner: vagrant
+        group: vagrant
+      when: init_cluster is succeeded and mode == "init"
+
+    - name: Copy admin.conf to home directory
+      ansible.builtin.copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/vagrant/.kube/config
+        owner: vagrant
+        group: vagrant
+        mode: 0600
+        remote_src: true
+      when: init_cluster is succeeded and mode == "init"
+
+    - name: Add Calico Helm repo
+      kubernetes.core.helm_repository:
+        name: projectcalico
+        repo_url: https://docs.tigera.io/calico/charts
+      register: calico_repo
+      when: init_cluster is succeeded and mode == "init"
+
+
+    - name: Ensure Tigera operator namespace exists
+      kubernetes.core.k8s:
+        state: present
+        kind: Namespace
+        name: tigera-operator
+      when: init_cluster is succeeded and mode == "init"
+
+    - name: Install Calico with default Helm values
+      kubernetes.core.helm:
+        name: calico
+        chart_ref: projectcalico/tigera-operator
+        namespace: calico-system
+        create_namespace: false
+        state: present
+      when: init_cluster is succeeded and mode == "init"

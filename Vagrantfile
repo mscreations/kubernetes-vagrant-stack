@@ -124,15 +124,17 @@ Vagrant.configure("2") do |config|
         puts "Reload skipped as server is not new"
       end
 
+      # Provision all master node only tasks
       if server[MODE] == "init" or server[MODE] == "master"
         node.vm.provision "ansible_local" do |ansible|
-          ansible.playbook    = "ansible/stage2_master.yml"
+          ansible.playbook          = "ansible/stage2_master.yml"
+          ansible.galaxy_role_file  = "ansible/requirements.yml"
           ansible.extra_vars = {
             mode: server[MODE],
-            setup_lb: MASTER_NODES_COUNT > 1,
             master_ips: master_ips,
-            node_ip: server[IP_ADDRESS],
-            network_prefix: ENV['NETWORK_PREFIX']
+            token: ENV['RANDOM_TOKEN'],
+            certificate_key: ENV['CERTIFICATE_KEY'],
+            pod_network_cidr: ENV['POD_NETWORK']
           }
         end
       end
