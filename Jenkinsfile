@@ -44,7 +44,7 @@ pipeline {
                     echo "Generated token: ${token}"
                     env.RANDOM_TOKEN = token
                     def certificate_key = sh(
-                        script: "openssl rand -hex 32"
+                        script: "openssl rand -hex 32",
                         returnStdout: true
                     ).trim()
                     echo "Generated certificate key: ${certifcate_key}"
