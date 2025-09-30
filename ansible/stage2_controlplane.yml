@@ -147,7 +147,7 @@
                      --control-plane \
                      --certificate-key {{ certificate_key }} \
       register: join_cluster
-      when: not k8s_ca.stat.exists and mode == "controlplane
+      when: not k8s_ca.stat.exists and mode == "controlplane"
 
     - name: Create k8s config directory
       ansible.builtin.file:
