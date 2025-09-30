@@ -47,7 +47,7 @@ pipeline {
                         script: "openssl rand -hex 32",
                         returnStdout: true
                     ).trim()
-                    echo "Generated certificate key: ${certifcate_key}"
+                    echo "Generated certificate key: ${certificate_key}"
                     env.CERTIFICATE_KEY = certificate_key
                 }
             }
