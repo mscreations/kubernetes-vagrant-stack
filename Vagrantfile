@@ -79,7 +79,8 @@ Vagrant.configure("2") do |config|
     else
       echo "SSH_KEY environment variable not set; skipping additional key."
     fi
-  SHELL
+  SHELL,
+  env: { "SSH_KEY" => ENV['SSH_KEY'] }
   
   servers.each do |server|
     config.vm.define server[NODE_NAME] do |node|
