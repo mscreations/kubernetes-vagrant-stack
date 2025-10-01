@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x
+
 CONTROLPLANE_NODES_COUNT=${CONTROLPLANE_NODES_COUNT:-1}
 CONTROLPLANE_MAX_CPUS=${CONTROLPLANE_MAX_CPUS:-2}
 CONTROLPLANE_MAX_MEMORY=${CONTROLPLANE_MAX_MEMORY:-2048}
@@ -53,3 +55,5 @@ $(for entry in "${worker_entries[@]}"; do echo "$entry"; done)
 controlplane
 workers
 EOF
+
+set +x
