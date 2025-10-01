@@ -30,28 +30,6 @@ pipeline {
         string defaultValue: '32768', name: 'WORKER_MAX_MEMORY', trim: true
     }
     stages {
-        stage('Generate Token') {
-            when {
-                expression { !params.TEARDOWN }
-            }
-            agent { label 'linux' }   // run this stage on your Linux agent
-            steps {
-                script {
-                    def token = sh(
-                        script: "tr -dc 'a-z0-9' </dev/urandom | head -c6 && echo -n '.' && tr -dc 'a-z0-9' </dev/urandom | head -c16",
-                        returnStdout: true
-                    ).trim()
-                    echo "Generated token: ${token}"
-                    env.RANDOM_TOKEN = token
-                    def certificate_key = sh(
-                        script: "openssl rand -hex 32",
-                        returnStdout: true
-                    ).trim()
-                    echo "Generated certificate key: ${certificate_key}"
-                    env.CERTIFICATE_KEY = certificate_key
-                }
-            }
-        }
         stage('Checkout') {
             steps {
                 checkout([
@@ -100,7 +78,9 @@ pipeline {
                                 [infisicalKey: 'DOMAIN_PASSWORD'], 
                                 [infisicalKey: 'CERT_EMAIL'], 
                                 [infisicalKey: 'DOMAIN'], 
-                                [infisicalKey: 'DHCP_SERVER']
+                                [infisicalKey: 'DHCP_SERVER'],
+                                [infisicalKey: 'K8S_TOKEN'],
+                                [infisicalKey: 'K8S_CERTIFICATE_KEY']
                             ]
                         )
                     ]
