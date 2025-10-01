@@ -33,6 +33,7 @@ pipeline {
         stage('Checkout') {
             agent { label 'hyperv' }
             steps {
+                bat "git config --global core.autocrlf false"
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/split-workflow']],
@@ -201,21 +202,13 @@ pipeline {
                 // Add your deployment steps here
             }
         }
-        stage('Ansible Ping') {
+        stage('Provision Customizations') {
             agent { label 'linux' }
             steps {
                 script {
-                    // Ensure Ansible is installed and available
                     sh """
-                        if ! command -v ansible >/dev/null 2>&1; then
-                            echo "Ansible is not installed on this agent!"
-                            exit 1
-                        fi
-                    """
-
-                    // Run ansible ping against the inventory
-                    sh """
-                        ansible all -i inventory.ini -m ping
+                        chmod +x ./scripts/deploy_customizations.sh
+                        ./scripts/deploy_customizations.sh
                     """
                 }
             }
