@@ -34,11 +34,9 @@ for ((i=0; i<WORKER_NODES_COUNT; i++)); do
   ((j++))
 done
 
-# ─────────────────────────────────────
 # Output servers to stdout for Jenkins
 printf "%s\n" "${servers[@]}"
 
-# ─────────────────────────────────────
 # Write Ansible inventory
 cat > inventory.ini <<EOF
 [controlplane]

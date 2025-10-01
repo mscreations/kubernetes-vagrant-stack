@@ -31,7 +31,7 @@ pipeline {
     }
     stages {
         stage('Checkout') {
-            agent { label 'linux' }
+            agent { label 'hyperv' }
             steps {
                 checkout([
                     $class: 'GitSCM',
@@ -40,13 +40,18 @@ pipeline {
                     extensions: [[$class: 'WipeWorkspace']],
                     userRemoteConfigs: [[url: 'git@github.com:mscreations/kubernetes-vagrant-stack.git', credentialsId: 'Github']]
                 ])
-                stash includes: '**', name: 'linuxSource'
+                
+                powershell """
+                    Copy-Item -Path '..\\..\\Kubernetes\\customize\\*' -Destination 'customize\\' -Recurse -Force
+                """
+
+                stash includes: '**', name: 'SourceFiles'
             }
         }
         stage('Generate Servers + Inventory') {
             agent { label 'linux' }
             steps {
-
+                unstash 'SourceFiles'
                 sh 'chmod +x ./scripts/generate_servers.sh'
                 script {
                     def output = sh(script: './scripts/generate_servers.sh', returnStdout: true).trim()
@@ -124,7 +129,6 @@ pipeline {
         stage('Check VM Status') {
             agent { label 'hyperv' }
             steps {
-                unstash 'linuxSource'
                 unstash 'configFiles'
 
                 script {
