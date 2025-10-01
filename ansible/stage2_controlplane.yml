@@ -1,0 +1,213 @@
+---
+- name: Stage 2 Controlplane Nodes
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Set network_prefix from node's IP addres
+      ansible.builtin.set_fact:
+        network_prefix: "{{ ansible_default_ipv4.address.split('.')[:3] | join('.') }}"
+
+    - name: Determine if we should setup LB
+      ansible.builtin.set_fact:
+        setup_lb: "{{ (controlplane_ips | length) > 1 }}"
+
+    - name: Install keepalived
+      ansible.builtin.apt:
+        name: keepalived
+        state: present
+      when: setup_lb
+
+    - name: Get unicast peers
+      ansible.builtin.set_fact:
+        filtered_ips: "{{ controlplane_ips | reject('eq', ansible_default_ipv4.address) | list }}"
+      when: setup_lb
+
+    - name: Configure keepalived
+      ansible.builtin.copy:
+        dest: "/etc/keepalived/keepalived.conf"
+        content: |
+          vrrp_track_process haproxy-check {
+            process haproxy
+            weight 30
+          }
+          global_defs {
+            router_id KubernetesVIP
+          }
+
+          vrrp_instance APIServerVIP {
+            interface eth0
+            state {{ (mode == "init") | ternary("MASTER", "BACKUP") }}
+            priority {{ 130 - 10 * ((ansible_default_ipv4.address.split('.')[-1] | int) - 200) }}
+            unicast_src_ip {{ ansible_default_ipv4.address }}
+            virtual_router_id 61
+            advert_int 1
+
+            authentication {
+              auth_type PASS
+              auth_pass N7v!pQ3z$L9rX2dF
+            }
+
+            unicast_peer {
+            {% for ip in filtered_ips %}
+            {{ ip }}
+            {% endfor -%}
+            }
+
+            virtual_ipaddress {
+              {{ network_prefix }}.200/24
+            }
+
+            track_process {
+              haproxy-check
+            }
+          }
+        owner: root
+        group: root
+        mode: '0644'
+      when: setup_lb
+
+    - name: Enable keepalived
+      ansible.builtin.systemd:
+        name: keepalived
+        daemon_reload: true
+        enabled: true
+        state: restarted
+      when: setup_lb
+
+    - name: Install haproxy
+      ansible.builtin.apt:
+        name: haproxy
+        state: present
+      when: setup_lb
+
+    - name: Configure haproxy
+      ansible.builtin.blockinfile:
+        path: /etc/haproxy/haproxy.cfg
+        block: |
+          frontend http_stats
+            bind *:8080
+            mode http
+            stats uri /haproxy?stats
+
+          frontend kube_api_server
+            bind 0.0.0.0:443
+            mode tcp
+            option tcplog
+            timeout client 10800s
+            default_backend k8s-api
+
+          backend k8s-api
+            mode tcp
+            option tcp-check
+            balance roundrobin
+            timeout server 10800s
+            default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
+            {% for ip in controlplane_ips -%}
+            server kcontrolplane{{ (ip.split('.')[-1] | int) - 200 }} {{ ip }}:6443 check
+            {% endfor %}
+      when: setup_lb
+    
+    - name: Enable haproxy
+      ansible.builtin.systemd:
+        name: haproxy
+        daemon_reload: true
+        enabled: true
+        state: restarted
+      when: setup_lb
+
+    #############################################################################################################
+    # Init Cluster
+    #############################################################################################################
+
+    - name: Check if cluster has been initialized already
+      ansible.builtin.stat:
+        path: /etc/kubernetes/pki/ca.key
+      register: k8s_ca
+
+    - name: Init cluster
+      ansible.builtin.shell: |
+        kubeadm init --pod-network-cidr {{ pod_network_cidr }} \
+                     --token {{ token }} \
+                     {% if setup_lb %}
+                     --control-plane-endpoint {{ network_prefix }}.200:443 \
+                     {% else %}
+                     --apiserver-advertise-address {{ ansible_default_ipv4.address }} \
+                     {% endif %}
+                     --certificate-key {{ certificate_key }} \
+                     --upload-certs
+      register: init_cluster
+      when: not k8s_ca.stat.exists and mode == "init" 
+
+    - name: Join cluster
+      ansible.builtin.shell: |
+        kubeadm join {{ network_prefix }}.200:443 \
+                     --token {{ token }} \
+                     --discovery-token-unsafe-skip-ca-verification \
+                     --control-plane \
+                     --certificate-key {{ certificate_key }} \
+      register: join_cluster
+      when: not k8s_ca.stat.exists and mode == "controlplane"
+
+    - name: Create k8s config directory
+      ansible.builtin.file:
+        path: "/home/vagrant/.kube"
+        state: directory
+        owner: vagrant
+        group: vagrant
+      when: init_cluster is succeeded and mode == "init"
+
+    - name: Copy admin.conf to home directory
+      ansible.builtin.copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/vagrant/.kube/config
+        owner: vagrant
+        group: vagrant
+        mode: 0600
+        remote_src: true
+      when: init_cluster is succeeded and mode == "init"
+
+    - name: Add Calico Helm repo
+      kubernetes.core.helm_repository:
+        name: projectcalico
+        repo_url: https://docs.tigera.io/calico/charts
+        kubeconfig: /home/vagrant/.kube/config
+      register: calico_repo
+      when: mode == "init"
+
+
+    - name: Ensure Tigera operator namespace exists
+      kubernetes.core.k8s:
+        state: present
+        kind: Namespace
+        name: tigera-operator
+        kubeconfig: /home/vagrant/.kube/config
+      when: mode == "init"
+
+    - name: Install Calico with default Helm values
+      kubernetes.core.helm:
+        name: calico
+        chart_ref: projectcalico/tigera-operator
+        namespace: tigera-operator
+        release_namespace: tigera-operator
+        state: present
+        kubeconfig: /home/vagrant/.kube/config
+      when: mode == "init"
+
+    - name: Create user init script
+      ansible.builtin.copy:
+        dest: /etc/skel/init.sh
+        content: |
+          #!/usr/bin/env bash
+
+          echo "Welcome to the Kubernetes Cluster"
+          mkdir -p ~/.kube
+          sudo cp /etc/kubernetes/admin.conf ~/.kube/config
+          sudo chown $(id -u):$(id -g) ~/.kube/config
+
+          kubectl get nodes -o wide
+
+          rm -if ~/init.sh
+        owner: root
+        group: root
+        mode: 0755

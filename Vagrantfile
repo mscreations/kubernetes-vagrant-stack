@@ -5,9 +5,9 @@ NETWORK_PREFIX      = ENV['NETWORK_PREFIX']
 POD_NETWORK         = ENV['POD_NETWORK']
 VAGRANT_BOX         = ENV['VAGRANT_BOX']
 
-MASTER_NODES_COUNT  = ENV['MASTER_NODES_COUNT'].to_i
-MASTER_MAX_CPUS     = ENV['MASTER_MAX_CPUS'].to_i
-MASTER_MAX_MEMORY   = ENV['MASTER_MAX_MEMORY'].to_i
+CONTROLPLANE_NODES_COUNT  = ENV['CONTROLPLANE_NODES_COUNT'].to_i
+CONTROLPLANE_MAX_CPUS     = ENV['CONTROLPLANE_MAX_CPUS'].to_i
+CONTROLPLANE_MAX_MEMORY   = ENV['CONTROLPLANE_MAX_MEMORY'].to_i
 
 WORKER_NODES_COUNT  = ENV['WORKER_NODES_COUNT'].to_i
 WORKER_MAX_CPUS     = ENV['WORKER_MAX_CPUS'].to_i
@@ -24,21 +24,21 @@ CREATED = 6
 
 j = 0
 servers = Array.new
-master_ips = Array.new
+controlplane_ips = Array.new
 worker_ips = Array.new
-(0..(MASTER_NODES_COUNT - 1)).each do |i|
+(0..(CONTROLPLANE_NODES_COUNT - 1)).each do |i|
   if i == 0
     mode = "init"
   else
-    mode = "master"
+    mode = "controlplane"
   end
-  created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "k8s (kmaster#{i+1})"`.strip
-  servers.push(["kmaster#{i+1}", MASTER_MAX_MEMORY, MASTER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode, created])
-  master_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
+  created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "kcontrolplane#{i+1}"`.strip
+  servers.push(["kcontrolplane#{i+1}", CONTROLPLANE_MAX_MEMORY, CONTROLPLANE_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode, created])
+  controlplane_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
   j += 1
 end
 (0..(WORKER_NODES_COUNT - 1)).each do |i|
-    created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "k8s (kworker#{i+1})"`.strip
+    created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "kworker#{i+1}"`.strip
     servers.push(["kworker#{i+1}", WORKER_MAX_MEMORY, WORKER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", "worker", created])
     worker_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
     j += 1
@@ -72,7 +72,7 @@ Vagrant.configure("2") do |config|
       node.vm.provider :hyperv do |h, override|
         h.memory      = server[MAX_MEMORY]
         h.cpus        = server[MAX_CPUS]
-        h.vmname      = "k8s (#{server[NODE_NAME]})"
+        h.vmname      = "#{server[NODE_NAME]}"
         h.mac         = server[MAC_ADDRESS]
         h.vm_integration_services = {
           guest_service_interface: true,
@@ -90,7 +90,7 @@ Vagrant.configure("2") do |config|
           trigger.run = {inline: "./powershell/dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']}"}
         end
         override.trigger.after :'VagrantPlugins::HyperV::Action::Import', type: :action do |trigger|
-          trigger.run = {inline: "./powershell/reset_uuid.ps1 -VMName \"k8s (#{server[NODE_NAME]})\""}
+          trigger.run = {inline: "./powershell/reset_uuid.ps1 -VMName #{server[NODE_NAME]}"}
         end
         override.trigger.before :'VagrantPlugins::HyperV::Action::DeleteVM', type: :action do |trigger|
           trigger.run = {inline: "./powershell/dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']} -RemoveReservation"}
@@ -110,6 +110,8 @@ Vagrant.configure("2") do |config|
       node.vm.provision "ansible_local" do |ansible|
         ansible.playbook          = "ansible/stage1.yml"
         ansible.galaxy_role_file  = "ansible/requirements.yml"
+        ansible.galaxy_roles_path = "/etc/ansible/roles"
+        ansible.galaxy_command = "sudo ansible-galaxy install --role-file=%{role_file} --roles-path=%{roles_path} --force"  
         ansible.extra_vars = {
           new_ssh_password: ENV['NEW_SSH_PASSWORD'],
           domain_password: ENV['DOMAIN_PASSWORD'],
@@ -124,15 +126,16 @@ Vagrant.configure("2") do |config|
         puts "Reload skipped as server is not new"
       end
 
-      if server[MODE] == "init" or server[MODE] == "master"
+      # Provision all controlplane node only tasks
+      if server[MODE] == "init" or server[MODE] == "controlplane"
         node.vm.provision "ansible_local" do |ansible|
-          ansible.playbook    = "ansible/stage2_master.yml"
+          ansible.playbook          = "ansible/stage2_controlplane.yml"
           ansible.extra_vars = {
             mode: server[MODE],
-            setup_lb: MASTER_NODES_COUNT > 1,
-            master_ips: master_ips,
-            node_ip: server[IP_ADDRESS],
-            network_prefix: ENV['NETWORK_PREFIX']
+            controlplane_ips: controlplane_ips,
+            token: ENV['RANDOM_TOKEN'],
+            certificate_key: ENV['CERTIFICATE_KEY'],
+            pod_network_cidr: ENV['POD_NETWORK']
           }
         end
       end
