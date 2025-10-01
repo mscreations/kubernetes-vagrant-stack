@@ -22,7 +22,7 @@ for ((i=0; i<CONTROLPLANE_NODES_COUNT; i++)); do
   name="kcontrolplane$((i+1))"
   ip="${NETWORK_PREFIX}.20$((j+1))"
   servers+=("$name,$CONTROLPLANE_MAX_MEMORY,$CONTROLPLANE_MAX_CPUS,$ip,$mode")
-  controlplane_entries+=("$ip mode=$mode")
+  controlplane_entries+=("$name mode=$mode")
   ((j++))
 done
 
@@ -30,7 +30,7 @@ for ((i=0; i<WORKER_NODES_COUNT; i++)); do
   name="kworker$((i+1))"
   ip="${NETWORK_PREFIX}.20$((j+1))"
   servers+=("$name,$WORKER_MAX_MEMORY,$WORKER_MAX_CPUS,$ip,worker")
-  worker_entries+=("$ip")
+  worker_entries+=("$name")
   ((j++))
 done
 

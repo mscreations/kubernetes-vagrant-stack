@@ -20,7 +20,6 @@ MAX_CPUS = 2
 MAC_ADDRESS = 3
 IP_ADDRESS = 4
 MODE = 5
-CREATED = 6
 
 j = 0
 servers = Array.new
@@ -32,14 +31,12 @@ worker_ips = Array.new
   else
     mode = "controlplane"
   end
-  created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "kcontrolplane#{i+1}"`.strip
-  servers.push(["kcontrolplane#{i+1}", CONTROLPLANE_MAX_MEMORY, CONTROLPLANE_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode, created])
+  servers.push(["kcontrolplane#{i+1}", CONTROLPLANE_MAX_MEMORY, CONTROLPLANE_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode])
   controlplane_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
   j += 1
 end
 (0..(WORKER_NODES_COUNT - 1)).each do |i|
-    created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "kworker#{i+1}"`.strip
-    servers.push(["kworker#{i+1}", WORKER_MAX_MEMORY, WORKER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", "worker", created])
+    servers.push(["kworker#{i+1}", WORKER_MAX_MEMORY, WORKER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", "worker"])
     worker_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
     j += 1
 end

@@ -56,6 +56,71 @@ pipeline {
                 stash includes: 'servers.txt,inventory.ini', name: 'configFiles'
             }
         }
+        stage('Prepare Jenkins SSH Key') {
+            agent { label 'linux' }
+            steps {
+                script {
+                    env.JENKINS_HOME_DIR = sh(
+                        script: "getent passwd jenkins | cut -d: -f6",
+                        returnStdout: true
+                    ).trim()
+
+                    if (!env.JENKINS_HOME_DIR) {
+                        error "Cannot determine home directory for jenkins user."
+                    }
+
+                    def sshDir = "${env.JENKINS_HOME_DIR}/.ssh"
+                    def keyFile = "${sshDir}/id_ansible"
+
+                    // Ensure .ssh directory exists
+                    sh """
+                        mkdir -p "${sshDir}"
+                        chmod 700 "${sshDir}"
+                    """
+
+                    // Generate key if missing
+                    sh """
+                        if [ ! -f "${keyFile}" ]; then
+                            ssh-keygen -t rsa -b 4096 -f "${keyFile}" -N ""
+                        fi
+                    """
+
+                    // Read public key into env variable
+                    env.SSH_KEY = sh(
+                        script: "cat ${keyFile}.pub",
+                        returnStdout: true
+                    ).trim()
+
+                    // Update SSH config for servers in servers.txt
+                    def servers = readFile('servers.txt').trim().split("\\r?\\n")
+                    def sshConfigFile = "${sshDir}/config"
+
+                    sh """
+                        touch "${sshConfigFile}"
+                        chmod 600 "${sshConfigFile}"
+                    """
+
+                    servers.each { line ->
+                        def field = line.split(',')
+                        def server = field[0]
+                        sh """
+                            # Remove old entry for host to avoid duplicates
+                            sed -i '/Host ${server}/,+5d' "${sshConfigFile}"
+
+                            # Add new entry
+                            echo "Host ${server}" >> "${sshConfigFile}"
+                            echo "    HostName ${server}" >> "${sshConfigFile}"
+                            echo "    User vagrant" >> "${sshConfigFile}"
+                            echo "    IdentityFile ${keyFile}" >> "${sshConfigFile}"
+                            echo "    StrictHostKeyChecking no" >> "${sshConfigFile}"
+                            echo "    UserKnownHostsFile /dev/null" >> "${sshConfigFile}"
+                        """
+                    }
+
+                    echo "SSH key ready at ${keyFile}, SSH config updated."
+                }
+            }
+        }
         stage('Check VM Status') {
             agent { label 'hyperv' }
             steps {
@@ -81,14 +146,13 @@ pipeline {
 
                         if (status != "Created") {
                             allCreated = false
-                            echo "All are NOT created"
                         }
 
                         echo "VM ${name} status: ${status}"
                     }
 
                     if (allCreated) {
-                        currentBuild.description = "All VMs exist, skipping vagrant up"
+                        echo "All VMs exist, skipping vagrant up"
                         skipVagrant = true
                     }
                     env.SKIP_VAGRANT = skipVagrant.toString()
@@ -119,7 +183,7 @@ pipeline {
                         )
                     ]
                 ) {
-                    bat "vagrant up --provision $VAGRANT_EXTRA_ARGS"    // Ensure provisioners are rerun.
+                    bat "vagrant up $VAGRANT_EXTRA_ARGS"
                 }
             }
         }
@@ -131,6 +195,25 @@ pipeline {
             steps {
                 echo "Running deployment..."
                 // Add your deployment steps here
+            }
+        }
+        stage('Ansible Ping') {
+            agent { label 'linux' }
+            steps {
+                script {
+                    // Ensure Ansible is installed and available
+                    sh """
+                        if ! command -v ansible >/dev/null 2>&1; then
+                            echo "Ansible is not installed on this agent!"
+                            exit 1
+                        fi
+                    """
+
+                    // Run ansible ping against the inventory
+                    sh """
+                        ansible all -i inventory.ini -m ping
+                    """
+                }
             }
         }
     }
