@@ -31,7 +31,7 @@
       loop: "{{ github_releases | dict2items }}"
       register: gh_releases
       run_once: true
-      delegate_to: localhost
+      delegate_to: kcontrolplane1
       changed_when: false
 
     - name: Build latest_versions fact (on localhost, once)
@@ -42,7 +42,7 @@
                  zip(gh_releases.results | map(attribute='json.tag_name')))
           }}
       run_once: true
-      delegate_to: localhost
+      delegate_to: kcontrolplane1
 
     - name: Share latest_versions fact with all hosts
       ansible.builtin.set_fact:
