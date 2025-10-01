@@ -47,6 +47,11 @@
     - name: Share latest_versions fact with all hosts
       ansible.builtin.set_fact:
         latest_versions: "{{ hostvars[groups['all'][0]].latest_versions }}"
+
+    - name: Show latest versions
+      ansible.builtin.debug:
+        var: latest_versions
+        
     ######################################################################
     # Install yq
     ######################################################################
