@@ -31,7 +31,7 @@ worker_ips = Array.new
   else
     mode = "controlplane"
   end
-  servers.push(["kcontrolplane#{i+1}", CONTROLPLANE_MAX_MEMORY, CONTROLPLANE_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode])
+  servers.push(["kcp#{i+1}", CONTROLPLANE_MAX_MEMORY, CONTROLPLANE_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode])
   controlplane_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
   j += 1
 end

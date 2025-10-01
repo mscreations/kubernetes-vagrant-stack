@@ -19,7 +19,7 @@ for ((i=0; i<CONTROLPLANE_NODES_COUNT; i++)); do
   else
     mode="controlplane"
   fi
-  name="kcontrolplane$((i+1))"
+  name="kcp$((i+1))"
   ip="${NETWORK_PREFIX}.20$((j+1))"
   servers+=("$name,$CONTROLPLANE_MAX_MEMORY,$CONTROLPLANE_MAX_CPUS,$ip,$mode")
   controlplane_entries+=("$name mode=$mode")
