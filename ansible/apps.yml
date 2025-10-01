@@ -51,6 +51,7 @@
     - name: Show latest versions
       ansible.builtin.debug:
         var: latest_versions
+      delegate_to: kcp1
 
     ######################################################################
     # Install yq
