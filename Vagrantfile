@@ -147,7 +147,7 @@ Vagrant.configure("2") do |config|
     trigger.info = "Disconnecting from the domain"
     trigger.on_error = :continue
     trigger.run_remote = {
-      path: "/vagrant/scripts/unjoin_domain.sh", 
+      path: "./scripts/unjoin_domain.sh", 
       env: { 
         "DOMAIN_PASS" => ENV['DOMAIN_PASSWORD']
       }
