@@ -25,7 +25,7 @@ pipeline {
         string defaultValue: '3', name: 'CONTROLPLANE_NODES_COUNT', trim: true
         string defaultValue: '4', name: 'CONTROLPLANE_MAX_CPUS', trim: true
         string defaultValue: '4096', name: 'CONTROLPLANE_MAX_MEMORY', trim: true
-        string defaultValue: '0', name: 'WORKER_NODES_COUNT', trim: true
+        string defaultValue: '3', name: 'WORKER_NODES_COUNT', trim: true
         string defaultValue: '16', name: 'WORKER_MAX_CPUS', trim: true
         string defaultValue: '32768', name: 'WORKER_MAX_MEMORY', trim: true
     }
