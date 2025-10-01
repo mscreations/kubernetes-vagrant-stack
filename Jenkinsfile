@@ -10,6 +10,7 @@ pipeline {
         VAGRANT_DOTFILE_PATH='D:\\Jenkins\\.vagrant'
         VAGRANT_FORCE_COLOR=1
         VAGRANT_INSTALL_LOCAL_PLUGINS=1
+        ANSIBLE_FORCE_COLOR = 1
     }
     // triggers {
     //     pollSCM('*/2 * * * *')
