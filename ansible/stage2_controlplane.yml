@@ -219,8 +219,8 @@
       ansible.builtin.file:
         path: "{{ item.path }}"
         state: directory
-        owner: {{ item.owner }}
-        group: {{ item.group }}
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
       when: init_cluster is succeeded
       with_items:
         - { path: "/home/vagrant/.kube", owner: "vagrant", group: "vagrant" }
@@ -230,8 +230,8 @@
       ansible.builtin.copy:
         src: /etc/kubernetes/admin.conf
         dest: "{{ item.path }}/config"
-        owner: {{ item.owner }}
-        group: {{ item.group }}
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
         mode: 0600
         remote_src: true
       when: init_cluster is succeeded
