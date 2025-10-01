@@ -200,9 +200,11 @@
         marker: "# {mark} ANSIBLE MANAGED ENCRYPTION VOLUMEMOUNT"
         insertafter: '^\s*volumeMounts:'
         block: |
-              - mountPath: {{ encrypt_config_dest | dirname }}
-                name: encryption-config
-                readOnly: true
+          {% filter indent(width=4, first=true) %}
+          - mountPath: {{ encrypt_config_dest | dirname }}
+            name: encryption-config
+            readOnly: true
+          {% endfilter %}
 
     - name: Ensure encryption volume is present
       ansible.builtin.blockinfile:
@@ -210,10 +212,12 @@
         marker: "# {mark} ANSIBLE MANAGED ENCRYPTION VOLUME"
         insertafter: '^\s*volumes:'
         block: |
-            - hostPath:
-                path: {{ encrypt_config_dest | dirname }}
-                type: DirectoryOrCreate
-              name: encryption-config    
+          {% filter indent(width=2, first=true) %}
+          - hostPath:
+              path: {{ encrypt_config_dest | dirname }}
+              type: DirectoryOrCreate
+            name: encryption-config
+          {% endfilter %}
     
     - name: Create k8s config directory
       ansible.builtin.file:
