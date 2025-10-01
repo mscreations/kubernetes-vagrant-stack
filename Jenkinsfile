@@ -214,5 +214,40 @@ pipeline {
                 }
             }
         }
+        stage('Stage 1 Provision') {
+            agent { label 'linux' }
+            steps {
+                withInfisical(
+                    configuration: [
+                        infisicalCredentialId: 'infisical', 
+                        infisicalEnvironmentSlug: 'prod', 
+                        infisicalProjectSlug: 'homelab-b-h-sw', 
+                        infisicalUrl: 'https://app.infisical.com'
+                    ],
+                    infisicalSecrets: [
+                        infisicalSecret(
+                            includeImports: true, path: '/', secretValues: [
+                                [infisicalKey: 'DOMAIN_PASSWORD'], 
+                                [infisicalKey: 'DOMAIN'],
+                                [infisicalKey: 'NEW_SSH_PASSWORD']
+                            ]
+                        )
+                    ]
+                ) {
+                    script {
+                        sh """
+                            ansible-galaxy install -r ./ansible/requirements.yml -p /etc/ansible/roles --force
+                            
+                            ansible-playbook -i inventory.ini \
+                                ./ansible/stage1.yml\
+                                -e "new_ssh_password=${NEW_SSH_PASSWORD}" \
+                                -e "domain_password=${DOMAIN_PASSWORD}" \
+                                -e "domain=${DOMAIN}" \
+                                -e "k8s_version=${K8S_VERSION}"
+                        """
+                    }
+                }
+            }
+        }
     }
 }

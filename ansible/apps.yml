@@ -20,9 +20,9 @@
 
   tasks:
     ######################################################################
-    # Dynamic installers for GitHub-hosted tools
+    # Fetch once, build version map, share with all hosts
     ######################################################################
-    - name: Fetch latest release info
+    - name: Fetch latest release info (only once, delegated to localhost)
       ansible.builtin.uri:
         url: "{{ item.value }}"
         return_content: true
@@ -30,20 +30,23 @@
           Accept: "application/vnd.github.v3+json"
       loop: "{{ github_releases | dict2items }}"
       register: gh_releases
+      run_once: true
+      delegate_to: localhost
       changed_when: false
 
-    - name: Set facts for download URLs
+    - name: Build latest_versions fact (on localhost, once)
       ansible.builtin.set_fact:
         latest_versions: >-
           {{
             dict(gh_releases.results | map(attribute='item.key') |
                  zip(gh_releases.results | map(attribute='json.tag_name')))
           }}
+      run_once: true
+      delegate_to: localhost
 
-    - name: Debug release versions
-      ansible.builtin.debug:
-        var: latest_versions
-
+    - name: Share latest_versions fact with all hosts
+      ansible.builtin.set_fact:
+        latest_versions: "{{ hostvars[groups['all'][0]].latest_versions }}"
     ######################################################################
     # Install yq
     ######################################################################
