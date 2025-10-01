@@ -59,7 +59,6 @@ pipeline {
                     def output = sh(script: './scripts/generate_servers.sh', returnStdout: true).trim()
                     writeFile file: 'servers.txt', text: output
                 }
-                archiveArtifacts artifacts: 'servers.txt,inventory.ini', fingerprint: true
                 stash includes: 'servers.txt,inventory.ini', name: 'configFiles'
             }
         }
@@ -171,71 +170,23 @@ pipeline {
                 expression { env.SKIP_VAGRANT == 'false' }
             }
             steps {
-                withInfisical(
-                    configuration: [
-                        infisicalCredentialId: 'infisical', 
-                        infisicalEnvironmentSlug: 'prod', 
-                        infisicalProjectSlug: 'homelab-b-h-sw', 
-                        infisicalUrl: 'https://app.infisical.com'
-                    ],
-                    infisicalSecrets: [
-                        infisicalSecret(
-                            includeImports: true, path: '/', secretValues: [
-                                [infisicalKey: 'DOMAIN_USER'], 
-                                [infisicalKey: 'DOMAIN_PASSWORD'], 
-                                [infisicalKey: 'DOMAIN'], 
-                                [infisicalKey: 'DHCP_SERVER']
-                            ]
-                        )
-                    ]
-                ) {
+                withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
+                    infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'DOMAIN_USER'],[infisicalKey: 'DOMAIN_PASSWORD'],[infisicalKey: 'DOMAIN'],[infisicalKey: 'DHCP_SERVER']])]) 
+                {
                     bat "vagrant up $VAGRANT_EXTRA_ARGS"
-                }
-            }
-        }
-        stage('Skip Vagrant True') {
-            agent { label 'linux' }
-            when {
-                expression { env.SKIP_VAGRANT == 'true' }
-            }
-            steps {
-                echo "Running deployment..."
-                // Add your deployment steps here
-            }
-        }
-        stage('Provision Customizations') {
-            agent { label 'linux' }
-            steps {
-                script {
-                    sh """
-                        chmod +x ./scripts/deploy_customizations.sh
-                        ./scripts/deploy_customizations.sh
-                    """
                 }
             }
         }
         stage('Stage 1 Provision') {
             agent { label 'linux' }
             steps {
-                withInfisical(
-                    configuration: [
-                        infisicalCredentialId: 'infisical', 
-                        infisicalEnvironmentSlug: 'prod', 
-                        infisicalProjectSlug: 'homelab-b-h-sw', 
-                        infisicalUrl: 'https://app.infisical.com'
-                    ],
-                    infisicalSecrets: [
-                        infisicalSecret(
-                            includeImports: true, path: '/', secretValues: [
-                                [infisicalKey: 'DOMAIN_PASSWORD'], 
-                                [infisicalKey: 'DOMAIN'],
-                                [infisicalKey: 'NEW_SSH_PASSWORD']
-                            ]
-                        )
-                    ]
-                ) {
+                withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
+                    infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'DOMAIN_PASSWORD'],[infisicalKey: 'DOMAIN'],[infisicalKey: 'NEW_SSH_PASSWORD']])]) 
+                {
                     script {
-                        sh """
+                        sh '''
+                            chmod +x ./scripts/deploy_customizations.sh
+                            ./scripts/deploy_customizations.sh
                             ansible-galaxy install -r ./ansible/requirements.yml -p /etc/ansible/roles --force
                             
                             ansible-playbook -i inventory.ini \
@@ -244,7 +195,39 @@ pipeline {
                                 -e "domain_password=${DOMAIN_PASSWORD}" \
                                 -e "domain=${DOMAIN}" \
                                 -e "k8s_version=${K8S_VERSION}"
-                        """
+                        '''
+                    }
+                }
+            }
+        }
+        stage('Init k8s Cluster') {
+            agent { label 'linux' }
+            steps {
+                withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
+                    infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) 
+                {
+                    script {
+                        def servers = readFile('servers.txt').trim().split("\\r?\\n")
+
+                        def control_ips = servers.collect { line ->
+                            def f = line.split(',')
+                            def role = f[4]
+                            def ip = f[3]
+                            (role == 'controlplane' || role == 'init') ? ip : null
+                        }.findAll { it != null }
+
+                        echo "Control Plane IPs: ${control_ips}"
+
+                        def control_ips_json = control_ips.collect { "\"${it}\"" }.join(',')
+
+                        sh """
+                            ansible-playbook --limit=controlplane[0] -i inventory.ini \
+                                ./ansible/stage2_controlplane.yml \
+                                --extra-vars='{"mode":"init","controlplane_ips":[${control_ips_json}],"token":"${K8S_TOKEN}","certificate_key":"${K8S_CERTIFICATE_KEY}","pod_network_cidr":"${POD_NETWORK}","encryption_key":"${K8S_ENCRYPTION_AT_REST}"}'
+                            ansible-playbook --limit=controlplane[1:] -i inventory.ini \
+                                ./ansible/stage2_controlplane.yml \
+                                --extra-vars='{"mode":"controlplane","controlplane_ips":[${control_ips_json}],"token":"${K8S_TOKEN}","certificate_key":"${K8S_CERTIFICATE_KEY}","pod_network_cidr":"${POD_NETWORK}","encryption_key":"${K8S_ENCRYPTION_AT_REST}"}'
+                        """                    
                     }
                 }
             }
