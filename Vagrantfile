@@ -135,7 +135,8 @@ Vagrant.configure("2") do |config|
             controlplane_ips: controlplane_ips,
             token: ENV['K8S_TOKEN'],
             certificate_key: ENV['K8S_CERTIFICATE_KEY'],
-            pod_network_cidr: ENV['POD_NETWORK']
+            pod_network_cidr: ENV['POD_NETWORK'],
+            encryption_key: ENV['K8S_ENCRYPTION_AT_REST']
           }
         end
       end

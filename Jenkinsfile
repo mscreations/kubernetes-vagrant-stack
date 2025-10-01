@@ -80,7 +80,8 @@ pipeline {
                                 [infisicalKey: 'DOMAIN'], 
                                 [infisicalKey: 'DHCP_SERVER'],
                                 [infisicalKey: 'K8S_TOKEN'],
-                                [infisicalKey: 'K8S_CERTIFICATE_KEY']
+                                [infisicalKey: 'K8S_CERTIFICATE_KEY'],
+                                [infisicalKey: 'K8S_ENCRYPTION_AT_REST']
                             ]
                         )
                     ]
