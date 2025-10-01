@@ -149,75 +149,75 @@
       register: join_cluster
       when: not k8s_ca.stat.exists and mode == "controlplane"
 
-    - name: Ensure encryption file does not already exist
-      ansible.builtin.stat:
-        path: /etc/kubernetes/encryption-config.yaml
-      register: encryption_file
+    # - name: Ensure encryption file does not already exist
+    #   ansible.builtin.stat:
+    #     path: /etc/kubernetes/encryption-config.yaml
+    #   register: encryption_file
 
-    - name: Set kube-apiserver manifest path
-      ansible.builtin.set_fact:
-        kube_apiserver_manifest: /etc/kubernetes/manifests/kube-apiserver.yaml
-        encrypt_config_dest: /etc/kubernetes/enc/encryption-config.yaml
+    # - name: Set kube-apiserver manifest path
+    #   ansible.builtin.set_fact:
+    #     kube_apiserver_manifest: /etc/kubernetes/manifests/kube-apiserver.yaml
+    #     encrypt_config_dest: /etc/kubernetes/enc/encryption-config.yaml
 
-    - name: Ensure encryption directory exists
-      ansible.builtin.file:
-        path: "{{ encrypt_config_dest | dirname }}"
-        state: directory
-        owner: root
-        group: root
+    # - name: Ensure encryption directory exists
+    #   ansible.builtin.file:
+    #     path: "{{ encrypt_config_dest | dirname }}"
+    #     state: directory
+    #     owner: root
+    #     group: root
 
-    - name: Enable encryption-at-rest
-      ansible.builtin.copy:
-        dest: "{{ encrypt_config_dest }}"
-        content: |
-          apiVersion: apiserver.config.k8s.io/v1
-          kind: EncryptionConfiguration
-          resources:
-            - resources:
-                - secrets
-                - configmaps
-              providers:
-                - secretbox:
-                    keys:
-                      - name: key1
-                        secret: {{ encryption_key }}
-                - identity: {}
-        owner: root
-        group: root
-        mode: '0644'
-      when: (init_cluster is succeeded or join_cluster is succeeded) and not encryption_file.stat.exists
+    # - name: Enable encryption-at-rest
+    #   ansible.builtin.copy:
+    #     dest: "{{ encrypt_config_dest }}"
+    #     content: |
+    #       apiVersion: apiserver.config.k8s.io/v1
+    #       kind: EncryptionConfiguration
+    #       resources:
+    #         - resources:
+    #             - secrets
+    #             - configmaps
+    #           providers:
+    #             - secretbox:
+    #                 keys:
+    #                   - name: key1
+    #                     secret: {{ encryption_key }}
+    #             - identity: {}
+    #     owner: root
+    #     group: root
+    #     mode: '0644'
+    #   when: (init_cluster is succeeded or join_cluster is succeeded) and not encryption_file.stat.exists
 
-    - name: Ensure encryption flag exists in kube-apiserver command
-      ansible.builtin.lineinfile:
-        path: "{{ kube_apiserver_manifest }}"
-        insertafter: '^\s*- --advertise-address'
-        line: "    - --encryption-provider-config={{ encrypt_config_dest }}"
-        state: present
+    # - name: Ensure encryption flag exists in kube-apiserver command
+    #   ansible.builtin.lineinfile:
+    #     path: "{{ kube_apiserver_manifest }}"
+    #     insertafter: '^\s*- --advertise-address'
+    #     line: "    - --encryption-provider-config={{ encrypt_config_dest }}"
+    #     state: present
 
-    - name: Ensure encryption volumeMount is present
-      ansible.builtin.blockinfile:
-        path: "{{ kube_apiserver_manifest }}"
-        marker: "# {mark} ANSIBLE MANAGED ENCRYPTION VOLUMEMOUNT"
-        insertafter: '^\s*volumeMounts:'
-        block: |
-          {% filter indent(width=4, first=true) %}
-          - mountPath: {{ encrypt_config_dest | dirname }}
-            name: encryption-config
-            readOnly: true
-          {% endfilter %}
+    # - name: Ensure encryption volumeMount is present
+    #   ansible.builtin.blockinfile:
+    #     path: "{{ kube_apiserver_manifest }}"
+    #     marker: "# {mark} ANSIBLE MANAGED ENCRYPTION VOLUMEMOUNT"
+    #     insertafter: '^\s*volumeMounts:'
+    #     block: |
+    #       {% filter indent(width=4, first=true) %}
+    #       - mountPath: {{ encrypt_config_dest | dirname }}
+    #         name: encryption-config
+    #         readOnly: true
+    #       {% endfilter %}
 
-    - name: Ensure encryption volume is present
-      ansible.builtin.blockinfile:
-        path: "{{ kube_apiserver_manifest }}"
-        marker: "# {mark} ANSIBLE MANAGED ENCRYPTION VOLUME"
-        insertafter: '^\s*volumes:'
-        block: |
-          {% filter indent(width=2, first=true) %}
-          - hostPath:
-              path: {{ encrypt_config_dest | dirname }}
-              type: DirectoryOrCreate
-            name: encryption-config
-          {% endfilter %}
+    # - name: Ensure encryption volume is present
+    #   ansible.builtin.blockinfile:
+    #     path: "{{ kube_apiserver_manifest }}"
+    #     marker: "# {mark} ANSIBLE MANAGED ENCRYPTION VOLUME"
+    #     insertafter: '^\s*volumes:'
+    #     block: |
+    #       {% filter indent(width=2, first=true) %}
+    #       - hostPath:
+    #           path: {{ encrypt_config_dest | dirname }}
+    #           type: DirectoryOrCreate
+    #         name: encryption-config
+    #       {% endfilter %}
     
     - name: Create k8s config directory
       ansible.builtin.file:
@@ -243,18 +243,18 @@
         - { path: "/home/vagrant/.kube", owner: "vagrant", group: "vagrant" }
         - { path: "/root/.kube", owner: "root", group: "root" }
 
-    - name: Query API server to check health
-      kubernetes.core.k8s_info:
-        api_version: v1
-        kind: Namespace
-        name: default
-        kubeconfig: /home/vagrant/.kube/config
-      register: kube_apiserver_health
-      retries: 30            # number of retries
-      delay: 5               # seconds between retries
-      until: kube_apiserver_health is succeeded
-      changed_when: false
-      when: (init_cluster is succeeded or join_cluster is succeeded) and not encryption_file.stat.exists
+    # - name: Query API server to check health
+    #   kubernetes.core.k8s_info:
+    #     api_version: v1
+    #     kind: Namespace
+    #     name: default
+    #     kubeconfig: /home/vagrant/.kube/config
+    #   register: kube_apiserver_health
+    #   retries: 30            # number of retries
+    #   delay: 5               # seconds between retries
+    #   until: kube_apiserver_health is succeeded
+    #   changed_when: false
+    #   when: (init_cluster is succeeded or join_cluster is succeeded) and not encryption_file.stat.exists
 
     - name: Add Calico Helm repo
       kubernetes.core.helm_repository:
