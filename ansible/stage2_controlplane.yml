@@ -199,23 +199,21 @@
         path: "{{ kube_apiserver_manifest }}"
         marker: "# {mark} ANSIBLE MANAGED ENCRYPTION VOLUMEMOUNT"
         insertafter: '^\s*volumeMounts:'
-        indent: 4
         block: |
-          - mountPath: {{ encrypt_config_dest | dirname }}
-            name: encryption-config
-            readOnly: true
+              - mountPath: {{ encrypt_config_dest | dirname }}
+                name: encryption-config
+                readOnly: true
 
     - name: Ensure encryption volume is present
       ansible.builtin.blockinfile:
         path: "{{ kube_apiserver_manifest }}"
         marker: "# {mark} ANSIBLE MANAGED ENCRYPTION VOLUME"
         insertafter: '^\s*volumes:'
-        indent: 2
         block: |
-          - hostPath:
-              path: {{ encrypt_config_dest | dirname }}
-              type: DirectoryOrCreate
-            name: encryption-config    
+            - hostPath:
+                path: {{ encrypt_config_dest | dirname }}
+                type: DirectoryOrCreate
+              name: encryption-config    
     
     - name: Create k8s config directory
       ansible.builtin.file:
