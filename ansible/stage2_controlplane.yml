@@ -199,6 +199,7 @@
         path: "{{ kube_apiserver_manifest }}"
         marker: "# {mark} ANSIBLE MANAGED ENCRYPTION VOLUMEMOUNT"
         insertafter: '^\s*volumeMounts:'
+        indent: 4
         block: |
           - mountPath: {{ encrypt_config_dest | dirname }}
             name: encryption-config
@@ -209,6 +210,7 @@
         path: "{{ kube_apiserver_manifest }}"
         marker: "# {mark} ANSIBLE MANAGED ENCRYPTION VOLUME"
         insertafter: '^\s*volumes:'
+        indent: 2
         block: |
           - hostPath:
               path: {{ encrypt_config_dest | dirname }}
@@ -239,9 +241,17 @@
         - { path: "/home/vagrant/.kube", owner: "vagrant", group: "vagrant" }
         - { path: "/root/.kube", owner: "root", group: "root" }
 
-    - name: Wait for kube-apiserver to restart
-      ansible.builtin.pause:
-        seconds: 120
+    - name: Query API server to check health
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: default
+        kubeconfig: /home/vagrant/.kube/config
+      register: kube_apiserver_health
+      retries: 30            # number of retries
+      delay: 5               # seconds between retries
+      until: kube_apiserver_health is succeeded
+      changed_when: false
       when: (init_cluster is succeeded or join_cluster is succeeded) and not encryption_file.stat.exists
 
     - name: Add Calico Helm repo
