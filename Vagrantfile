@@ -100,46 +100,46 @@ Vagrant.configure("2") do |config|
       # Run customization ansible scripts for all hosts (scripts not in git)
       # These scripts setup the customized shell that has my specific preferences
       # Needs to be completed prior to stage 1 as it will patch the profile there.
-      Dir.glob("customize/*.y{a,}ml").each do |playbook|
-        node.vm.provision "ansible_local" do |ansible|
-          ansible.playbook = playbook
-        end
-      end
+      # Dir.glob("customize/*.y{a,}ml").each do |playbook|
+      #   node.vm.provision "ansible_local" do |ansible|
+      #     ansible.playbook = playbook
+      #   end
+      # end
 
       # Run customization ansible scripts for all hosts that are stored in git
-      node.vm.provision "ansible_local" do |ansible|
-        ansible.playbook          = "ansible/stage1.yml"
-        ansible.galaxy_role_file  = "ansible/requirements.yml"
-        ansible.galaxy_roles_path = "/etc/ansible/roles"
-        ansible.galaxy_command = "sudo ansible-galaxy install --role-file=%{role_file} --roles-path=%{roles_path} --force"  
-        ansible.extra_vars = {
-          new_ssh_password: ENV['NEW_SSH_PASSWORD'],
-          domain_password: ENV['DOMAIN_PASSWORD'],
-          domain: ENV["DOMAIN"],
-          k8s_version: ENV["K8S_VERSION"]
-        }
-      end
+      # node.vm.provision "ansible_local" do |ansible|
+      #   ansible.playbook          = "ansible/stage1.yml"
+      #   ansible.galaxy_role_file  = "ansible/requirements.yml"
+      #   ansible.galaxy_roles_path = "/etc/ansible/roles"
+      #   ansible.galaxy_command = "sudo ansible-galaxy install --role-file=%{role_file} --roles-path=%{roles_path} --force"  
+      #   ansible.extra_vars = {
+      #     new_ssh_password: ENV['NEW_SSH_PASSWORD'],
+      #     domain_password: ENV['DOMAIN_PASSWORD'],
+      #     domain: ENV["DOMAIN"],
+      #     k8s_version: ENV["K8S_VERSION"]
+      #   }
+      # end
 
-      if server[CREATED] == "NotCreated"
-        node.vm.provision :reload
-      else
-        puts "Reload skipped as server is not new"
-      end
+      # if server[CREATED] == "NotCreated"
+      #   node.vm.provision :reload
+      # else
+      #   puts "Reload skipped as server is not new"
+      # end
 
       # Provision all controlplane node only tasks
-      if server[MODE] == "init" or server[MODE] == "controlplane"
-        node.vm.provision "ansible_local" do |ansible|
-          ansible.playbook          = "ansible/stage2_controlplane.yml"
-          ansible.extra_vars = {
-            mode: server[MODE],
-            controlplane_ips: controlplane_ips,
-            token: ENV['K8S_TOKEN'],
-            certificate_key: ENV['K8S_CERTIFICATE_KEY'],
-            pod_network_cidr: ENV['POD_NETWORK'],
-            encryption_key: ENV['K8S_ENCRYPTION_AT_REST']
-          }
-        end
-      end
+      # if server[MODE] == "init" or server[MODE] == "controlplane"
+      #   node.vm.provision "ansible_local" do |ansible|
+      #     ansible.playbook          = "ansible/stage2_controlplane.yml"
+      #     ansible.extra_vars = {
+      #       mode: server[MODE],
+      #       controlplane_ips: controlplane_ips,
+      #       token: ENV['K8S_TOKEN'],
+      #       certificate_key: ENV['K8S_CERTIFICATE_KEY'],
+      #       pod_network_cidr: ENV['POD_NETWORK'],
+      #       encryption_key: ENV['K8S_ENCRYPTION_AT_REST']
+      #     }
+      #   end
+      # end
     end
   end
 
@@ -147,7 +147,7 @@ Vagrant.configure("2") do |config|
     trigger.info = "Disconnecting from the domain"
     trigger.on_error = :continue
     trigger.run_remote = {
-      path: "/vagrant/unjoin_domain.sh", 
+      path: "/vagrant/scripts/unjoin_domain.sh", 
       env: { 
         "DOMAIN_PASS" => ENV['DOMAIN_PASSWORD']
       }
