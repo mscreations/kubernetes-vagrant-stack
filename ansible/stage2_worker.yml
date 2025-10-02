@@ -11,7 +11,7 @@
     - name: Join the worker node to the Kubernetes cluster
       ansible.builtin.shell: |
         kubeadm join {{network_prefix}}.200:443 \
-          -- token {{ token }} \
+          --token {{ token }} \
           --discovery-token-unsafe-skip-ca-verification \
           --certificate-key {{ certificate_key }}
       register: join_cluster
