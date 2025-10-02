@@ -13,5 +13,5 @@
         kubeadm join {{network_prefix}}.200:443 \
           -- token {{ token }} \
           --discovery-token-unsafe-skip-ca-verification \
-          --certificate-key {{ certificate-key }}
+          --certificate-key {{ certificate_key }}
       register: join_cluster
