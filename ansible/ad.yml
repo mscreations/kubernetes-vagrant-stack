@@ -39,6 +39,7 @@
         echo "{{ domain_password }}" | realm join {{ domain }} --computer-ou=OU='Linux Servers'
       when: domain not in realm_status.stdout
       register: realm_join
+      notify: reboot_if_needed
       failed_when: "'Already joined' not in realm_join.stderr and realm_join.rc != 0"
  
     - name: Enable mkhomedir for PAM
@@ -76,3 +77,11 @@
         owner: root
         group: root
         mode: '0600'
+
+  handlers:
+    - name: reboot_if_needed
+      ansible.builtin.reboot:
+        msg: "Rebooting to apply changes after joining AD domain"
+        pre_reboot_delay: 5
+        reboot_timeout: 300
+        post_reboot_delay: 10
