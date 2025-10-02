@@ -197,6 +197,11 @@
         release_namespace: tigera-operator
         state: present
         kubeconfig: /home/vagrant/.kube/config
+        values:
+          installation:
+            registry: mirror.gcr.io
+          calicoctl:
+            image: mirror.gcr.io/calico/ctl
       when: mode == "init"
 
     - name: Create user init script
