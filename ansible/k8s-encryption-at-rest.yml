@@ -1,0 +1,120 @@
+---
+- name: Enable encryption at rest on the Kubernetes control plane nodes
+  hosts: controlplane
+  become: yes
+
+  tasks:
+    - name: Set kube-apiserver manifest path
+      ansible.builtin.set_fact:
+        kube_apiserver_manifest: /etc/kubernetes/manifests/kube-apiserver.yaml
+        encrypt_config_dest: /etc/kubernetes/enc/encryption-config.yaml
+
+    - name: Ensure encryption file does not already exist
+      ansible.builtin.stat:
+        path: "{{ encrypt_config_dest}}"
+      register: encryption_file
+
+    - name: Ensure encryption directory exists
+      ansible.builtin.file:
+        path: "{{ encrypt_config_dest | dirname }}"
+        state: directory
+        owner: root
+        group: root
+
+    - name: Enable encryption-at-rest
+      ansible.builtin.copy:
+        dest: "{{ encrypt_config_dest }}"
+        content: |
+          apiVersion: apiserver.config.k8s.io/v1
+          kind: EncryptionConfiguration
+          resources:
+            - resources:
+                - secrets
+                - configmaps
+              providers:
+                - secretbox:
+                    keys:
+                      - name: key1
+                        secret: {{ encryption_key }}
+                - identity: {}
+        owner: root
+        group: root
+        mode: '0644'
+      when: not encryption_file.stat.exists
+
+    - name: Ensure encryption flag exists in kube-apiserver command
+      ansible.builtin.lineinfile:
+        path: "{{ kube_apiserver_manifest }}"
+        insertafter: '^\s*- --advertise-address'
+        line: "    - --encryption-provider-config={{ encrypt_config_dest }}"
+        state: present
+
+    - name: Ensure encryption volumeMount is present
+      ansible.builtin.blockinfile:
+        path: "{{ kube_apiserver_manifest }}"
+        marker: "# {mark} ANSIBLE MANAGED ENCRYPTION VOLUMEMOUNT"
+        insertafter: '^\s*volumeMounts:'
+        block: |
+          {% filter indent(width=4, first=true) %}
+          - mountPath: {{ encrypt_config_dest | dirname }}
+            name: encryption-config
+            readOnly: true
+          {% endfilter %}
+
+    - name: Ensure encryption volume is present
+      ansible.builtin.blockinfile:
+        path: "{{ kube_apiserver_manifest }}"
+        marker: "# {mark} ANSIBLE MANAGED ENCRYPTION VOLUME"
+        insertafter: '^\s*volumes:'
+        block: |
+          {% filter indent(width=2, first=true) %}
+          - hostPath:
+              path: {{ encrypt_config_dest | dirname }}
+              type: DirectoryOrCreate
+            name: encryption-config
+          {% endfilter %}
+
+    - name: Query API server to check health
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: default
+        kubeconfig: /home/vagrant/.kube/config
+      register: kube_apiserver_health
+      retries: 30            # number of retries
+      delay: 5               # seconds between retries
+      until: kube_apiserver_health is succeeded
+      changed_when: false
+      when: not encryption_file.stat.exists
+
+    - name: Retrieve all secrets
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+      register: all_secrets
+      when: inventory_hostname == groups['controlplane'][0]
+
+    - name: Reapply all secrets
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ item }}"
+      loop: "{{ all_secrets.resources }}"
+      loop_control:
+        label: "{{ item.metadata.namespace }}/{{ item.metadata.name }}"
+      when: inventory_hostname == groups['controlplane'][0]
+
+    - name: Retrieve all ConfigMaps
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: ConfigMap
+      register: all_configmaps
+      when: inventory_hostname == groups['controlplane'][0]
+
+    - name: Reapply all ConfigMaps
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ item }}"
+      loop: "{{ all_configmaps.resources }}"
+      loop_control:
+        label: "{{ item.metadata.namespace }}/{{ item.metadata.name }}"
+      when: inventory_hostname == groups['controlplane'][0]

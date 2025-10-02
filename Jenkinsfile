@@ -223,13 +223,16 @@ pipeline {
                         sh """
                             ansible-playbook --limit=controlplane[0] -i inventory.ini \
                                 ./ansible/stage2_controlplane.yml \
-                                --extra-vars='{"mode":"init","controlplane_ips":[${control_ips_json}],"token":"${K8S_TOKEN}","certificate_key":"${K8S_CERTIFICATE_KEY}","pod_network_cidr":"${POD_NETWORK}","encryption_key":"${K8S_ENCRYPTION_AT_REST}"}'
+                                --extra-vars='{"mode":"init","controlplane_ips":[${control_ips_json}],"token":"${K8S_TOKEN}","certificate_key":"${K8S_CERTIFICATE_KEY}","pod_network_cidr":"${POD_NETWORK}"}'
                             ansible-playbook --limit=controlplane[1:] -i inventory.ini \
                                 ./ansible/stage2_controlplane.yml \
-                                --extra-vars='{"mode":"controlplane","controlplane_ips":[${control_ips_json}],"token":"${K8S_TOKEN}","certificate_key":"${K8S_CERTIFICATE_KEY}","pod_network_cidr":"${POD_NETWORK}","encryption_key":"${K8S_ENCRYPTION_AT_REST}"}'
+                                --extra-vars='{"mode":"controlplane","controlplane_ips":[${control_ips_json}],"token":"${K8S_TOKEN}","certificate_key":"${K8S_CERTIFICATE_KEY}","pod_network_cidr":"${POD_NETWORK}"}'
                             ansible-playbook --limit=workers -i inventory.ini \
                                 ./ansible/stage2_worker.yml \
                                 --extra-vars='{"token":"${K8S_TOKEN}","certificate_key":"${K8S_CERTIFICATE_KEY}"}'
+                            ansible-playbook -i inventory.ini \
+                                ./ansible/k8s-encryption-at-rest.yml \
+                                --extra-vars='{"encryption_key":"${K8S_ENCRYPTION_AT_REST }"}'
                         """                    
                     }
                 }
