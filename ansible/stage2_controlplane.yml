@@ -4,18 +4,6 @@
   become: true
 
   tasks:
-    - name: Show debug info
-      ansible.builtin.debug:
-        msg: |
-          Hostname: {{ inventory_hostname }}
-          IP Address: {{ ansible_default_ipv4.address }}
-          Mode: {{ mode }}
-          Control Plane IPs: {{ controlplane_ips }}
-          Pod Network CIDR: {{ pod_network_cidr }}
-          Token: {{ token }}
-          Certificate Key: {{ certificate_key }}
-          Encryption Key: {{ encryption_key | default('Not Set') }}
-
     - name: Set network_prefix from node's IP addres
       ansible.builtin.set_fact:
         network_prefix: "{{ ansible_default_ipv4.address.split('.')[:3] | join('.') }}"
@@ -33,16 +21,6 @@
     - name: Get unicast peers
       ansible.builtin.set_fact:
         filtered_ips: "{{ controlplane_ips | reject('eq', ansible_default_ipv4.address) | list }}"
-      when: setup_lb
-
-    - name: Show filtered IPs
-      ansible.builtin.debug:
-        var: filtered_ips
-      when: setup_lb
-
-    - name: Show control plane IPs
-      ansible.builtin.debug:
-        var: controlplane_ips
       when: setup_lb
 
     - name: Configure keepalived

@@ -227,6 +227,9 @@ pipeline {
                             ansible-playbook --limit=controlplane[1:] -i inventory.ini \
                                 ./ansible/stage2_controlplane.yml \
                                 --extra-vars='{"mode":"controlplane","controlplane_ips":[${control_ips_json}],"token":"${K8S_TOKEN}","certificate_key":"${K8S_CERTIFICATE_KEY}","pod_network_cidr":"${POD_NETWORK}","encryption_key":"${K8S_ENCRYPTION_AT_REST}"}'
+                            ansible-playbook --limit=controlplane[1:] -i inventory.ini \
+                                ./ansible/stage2_controlplane.yml \
+                                --extra-vars='{"token":"${K8S_TOKEN}","certificate_key":"${K8S_CERTIFICATE_KEY}"}'
                         """                    
                     }
                 }

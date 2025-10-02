@@ -1,0 +1,17 @@
+---
+- name: Stage 2 Worker Playbook
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Set network_prefix from node's IP addres
+      ansible.builtin.set_fact:
+        network_prefix: "{{ ansible_default_ipv4.address.split('.')[:3] | join('.') }}"
+
+    - name: Join the worker node to the Kubernetes cluster
+      ansible.builtin.shell: |
+        kubeadm join {{network_prefix}}.200:443 \
+          -- token {{ token }} \
+          --discovery-token-unsafe-skip-ca-verification \
+          --certificate-key {{ certificate-key }}
+      register: join_cluster
