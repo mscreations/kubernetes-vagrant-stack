@@ -12,9 +12,9 @@ pipeline {
         VAGRANT_INSTALL_LOCAL_PLUGINS=1
         ANSIBLE_FORCE_COLOR = 1
     }
-    // triggers {
-    //     pollSCM('*/2 * * * *')
-    // }
+    triggers {
+        pollSCM('*/2 * * * *')
+    }
     parameters {
         string defaultValue: "1.34", name: 'K8S_VERSION', trim: true
         booleanParam 'TEARDOWN'
@@ -37,7 +37,7 @@ pipeline {
                 bat "git config --global core.autocrlf false"
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: '*/split-workflow']],
+                    branches: [[name: '*/dev']],
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [[$class: 'WipeWorkspace']],
                     userRemoteConfigs: [[url: 'git@github.com:mscreations/kubernetes-vagrant-stack.git', credentialsId: 'Github']]
