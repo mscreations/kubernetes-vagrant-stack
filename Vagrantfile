@@ -20,7 +20,6 @@ MAX_CPUS = 2
 MAC_ADDRESS = 3
 IP_ADDRESS = 4
 MODE = 5
-CREATED = 6
 
 j = 0
 servers = Array.new
@@ -32,14 +31,12 @@ worker_ips = Array.new
   else
     mode = "controlplane"
   end
-  created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "kcontrolplane#{i+1}"`.strip
-  servers.push(["kcontrolplane#{i+1}", CONTROLPLANE_MAX_MEMORY, CONTROLPLANE_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode, created])
+  servers.push(["kcp#{i+1}", CONTROLPLANE_MAX_MEMORY, CONTROLPLANE_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode])
   controlplane_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
   j += 1
 end
 (0..(WORKER_NODES_COUNT - 1)).each do |i|
-    created = `powershell -ExecutionPolicy Bypass -File "./powershell/check_status.ps1" -VMName "kworker#{i+1}"`.strip
-    servers.push(["kworker#{i+1}", WORKER_MAX_MEMORY, WORKER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", "worker", created])
+    servers.push(["kworker#{i+1}", WORKER_MAX_MEMORY, WORKER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", "worker"])
     worker_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
     j += 1
 end
@@ -58,6 +55,30 @@ Vagrant.configure("2") do |config|
   config.vm.box = VAGRANT_BOX
   config.vm.synced_folder ".", "/vagrant", mount_options: ["uid=1000", "gid=1000"], smb_username: ENV['DOMAIN_USER'], smb_password: ENV['DOMAIN_PASSWORD']
   config.vm.allow_fstab_modification = true
+  
+  config.ssh.insert_key = true
+  config.vm.provision "shell", 
+    env: { "SSH_KEY" => ENV['SSH_KEY'] },
+    inline: <<-SHELL
+    if [ ! -z "${SSH_KEY}" ]; then
+      AUTH_KEYS="/home/vagrant/.ssh/authorized_keys"
+      
+      # Create .ssh dir if missing
+      mkdir -p /home/vagrant/.ssh
+      chown vagrant:vagrant /home/vagrant/.ssh
+      chmod 700 /home/vagrant/.ssh
+
+      # Append the key only if it is not already present
+      grep -qxF "${SSH_KEY}" "$AUTH_KEYS" || echo "${SSH_KEY}" >> "$AUTH_KEYS"
+      
+      chown vagrant:vagrant "$AUTH_KEYS"
+      chmod 600 "$AUTH_KEYS"
+      
+      echo "Custom SSH_KEY added successfully."
+    else
+      echo "SSH_KEY environment variable not set; skipping additional key."
+    fi
+  SHELL
   
   servers.each do |server|
     config.vm.define server[NODE_NAME] do |node|
@@ -96,50 +117,6 @@ Vagrant.configure("2") do |config|
           trigger.run = {inline: "./powershell/dhcp.ps1 -Hostname #{server[NODE_NAME]}.#{ENV['DOMAIN']} -ScopeId #{NETWORK_PREFIX}.0 -MACAddress #{server[MAC_ADDRESS]} -IPAddress #{server[IP_ADDRESS]} -DHCPServer #{ENV['DHCP_SERVER']} -Username #{ENV['DOMAIN_USER']} -Password #{ENV['DOMAIN_PASSWORD']} -RemoveReservation"}
         end
       end
-
-      # Run customization ansible scripts for all hosts (scripts not in git)
-      # These scripts setup the customized shell that has my specific preferences
-      # Needs to be completed prior to stage 1 as it will patch the profile there.
-      Dir.glob("customize/*.y{a,}ml").each do |playbook|
-        node.vm.provision "ansible_local" do |ansible|
-          ansible.playbook = playbook
-        end
-      end
-
-      # Run customization ansible scripts for all hosts that are stored in git
-      node.vm.provision "ansible_local" do |ansible|
-        ansible.playbook          = "ansible/stage1.yml"
-        ansible.galaxy_role_file  = "ansible/requirements.yml"
-        ansible.galaxy_roles_path = "/etc/ansible/roles"
-        ansible.galaxy_command = "sudo ansible-galaxy install --role-file=%{role_file} --roles-path=%{roles_path} --force"  
-        ansible.extra_vars = {
-          new_ssh_password: ENV['NEW_SSH_PASSWORD'],
-          domain_password: ENV['DOMAIN_PASSWORD'],
-          domain: ENV["DOMAIN"],
-          k8s_version: ENV["K8S_VERSION"]
-        }
-      end
-
-      if server[CREATED] == "NotCreated"
-        node.vm.provision :reload
-      else
-        puts "Reload skipped as server is not new"
-      end
-
-      # Provision all controlplane node only tasks
-      if server[MODE] == "init" or server[MODE] == "controlplane"
-        node.vm.provision "ansible_local" do |ansible|
-          ansible.playbook          = "ansible/stage2_controlplane.yml"
-          ansible.extra_vars = {
-            mode: server[MODE],
-            controlplane_ips: controlplane_ips,
-            token: ENV['K8S_TOKEN'],
-            certificate_key: ENV['K8S_CERTIFICATE_KEY'],
-            pod_network_cidr: ENV['POD_NETWORK'],
-            encryption_key: ENV['K8S_ENCRYPTION_AT_REST']
-          }
-        end
-      end
     end
   end
 
@@ -147,7 +124,7 @@ Vagrant.configure("2") do |config|
     trigger.info = "Disconnecting from the domain"
     trigger.on_error = :continue
     trigger.run_remote = {
-      path: "/vagrant/unjoin_domain.sh", 
+      path: "./scripts/unjoin_domain.sh", 
       env: { 
         "DOMAIN_PASS" => ENV['DOMAIN_PASSWORD']
       }

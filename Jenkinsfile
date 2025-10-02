@@ -10,6 +10,7 @@ pipeline {
         VAGRANT_DOTFILE_PATH='D:\\Jenkins\\.vagrant'
         VAGRANT_FORCE_COLOR=1
         VAGRANT_INSTALL_LOCAL_PLUGINS=1
+        ANSIBLE_FORCE_COLOR = 1
     }
     triggers {
         pollSCM('*/2 * * * *')
@@ -31,123 +32,209 @@ pipeline {
     }
     stages {
         stage('Checkout') {
+            agent { label 'hyperv' }
             steps {
+                bat "git config --global core.autocrlf false"
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/dev']],
                     doGenerateSubmoduleConfigurations: false,
-                    extensions: [[$class: 'WipeWorkspace']], // cleans workspace first
+                    extensions: [[$class: 'WipeWorkspace']],
                     userRemoteConfigs: [[url: 'git@github.com:mscreations/kubernetes-vagrant-stack.git', credentialsId: 'Github']]
                 ])
-            }
-        }
-        stage('Populate customization directory') {
-            when {
-                expression { !params.TEARDOWN }
-            }
-            steps {
+                
                 powershell """
                     Copy-Item -Path '..\\..\\Kubernetes\\customize\\*' -Destination 'customize\\' -Recurse -Force
                 """
+
+                stash includes: '**', name: 'SourceFiles'
             }
         }
-        stage('Update Vagrant Box') {
-            when {
-                expression { !params.TEARDOWN && params.UPDATE_BOX }
-            }
+        stage('Generate Servers + Inventory') {
+            agent { label 'linux' }
             steps {
-                bat "vagrant box update"
+                unstash 'SourceFiles'
+                sh 'chmod +x ./scripts/generate_servers.sh'
+                script {
+                    def output = sh(script: './scripts/generate_servers.sh', returnStdout: true).trim()
+                    writeFile file: 'servers.txt', text: output
+                }
+                stash includes: 'servers.txt,inventory.ini', name: 'configFiles'
+            }
+        }
+        stage('Prepare Jenkins SSH Key') {
+            agent { label 'linux' }
+            steps {
+                script {
+                    env.JENKINS_HOME_DIR = sh(
+                        script: "getent passwd jenkins | cut -d: -f6",
+                        returnStdout: true
+                    ).trim()
+
+                    if (!env.JENKINS_HOME_DIR) {
+                        error "Cannot determine home directory for jenkins user."
+                    }
+
+                    def sshDir = "${env.JENKINS_HOME_DIR}/.ssh"
+                    def keyFile = "${sshDir}/id_ansible"
+
+                    // Ensure .ssh directory exists
+                    sh """
+                        mkdir -p "${sshDir}"
+                        chmod 700 "${sshDir}"
+                    """
+
+                    // Generate key if missing
+                    sh """
+                        if [ ! -f "${keyFile}" ]; then
+                            ssh-keygen -t rsa -b 4096 -f "${keyFile}" -N ""
+                        fi
+                    """
+
+                    // Read public key into env variable
+                    env.SSH_KEY = sh(
+                        script: "cat ${keyFile}.pub",
+                        returnStdout: true
+                    ).trim()
+
+                    // Update SSH config for servers in servers.txt
+                    def servers = readFile('servers.txt').trim().split("\\r?\\n")
+                    def sshConfigFile = "${sshDir}/config"
+
+                    sh """
+                        touch "${sshConfigFile}"
+                        chmod 600 "${sshConfigFile}"
+                    """
+
+                    servers.each { line ->
+                        def field = line.split(',')
+                        def server = field[0]
+                        sh """
+                            # Remove old entry for host to avoid duplicates
+                            sed -i '/Host ${server}/,+5d' "${sshConfigFile}"
+
+                            # Add new entry
+                            echo "Host ${server}" >> "${sshConfigFile}"
+                            echo "    HostName ${server}" >> "${sshConfigFile}"
+                            echo "    User vagrant" >> "${sshConfigFile}"
+                            echo "    IdentityFile ${keyFile}" >> "${sshConfigFile}"
+                            echo "    StrictHostKeyChecking no" >> "${sshConfigFile}"
+                            echo "    UserKnownHostsFile /dev/null" >> "${sshConfigFile}"
+                        """
+                    }
+
+                    echo "SSH key ready at ${keyFile}, SSH config updated."
+                }
+            }
+        }
+        stage('Check VM Status') {
+            agent { label 'hyperv' }
+            steps {
+                unstash 'configFiles'
+
+                script {
+                    def servers = readFile('servers.txt').trim().split("\n")
+                    def allCreated = true
+                    def skipVagrant = false
+
+                    for (line in servers) {
+                        def parts = line.split(',')
+                        def name = parts[0]
+                        def status = bat(
+                            script: """
+                                @echo off
+                                powershell -NoProfile -ExecutionPolicy Bypass -File ./powershell/check_status.ps1 -VMName ${name}
+                            """,
+                            returnStdout: true
+                        ).trim()
+
+
+                        if (status != "Created") {
+                            allCreated = false
+                        }
+
+                        echo "VM ${name} status: ${status}"
+                    }
+
+                    if (allCreated) {
+                        echo "All VMs exist, skipping vagrant up"
+                        skipVagrant = true
+                    }
+                    env.SKIP_VAGRANT = skipVagrant.toString()
+                }
             }
         }
         stage('Run Vagrant') {
+            agent { label 'hyperv' }
             when {
-                expression { !params.TEARDOWN }
+                expression { env.SKIP_VAGRANT == 'false' }
             }
             steps {
-                withInfisical(
-                    configuration: [
-                        infisicalCredentialId: 'infisical', 
-                        infisicalEnvironmentSlug: 'prod', 
-                        infisicalProjectSlug: 'homelab-b-h-sw', 
-                        infisicalUrl: 'https://app.infisical.com'
-                    ],
-                    infisicalSecrets: [
-                        infisicalSecret(
-                            includeImports: true, path: '/', secretValues: [
-                                [infisicalKey: 'DOMAIN_USER'], 
-                                [infisicalKey: 'DOMAIN_PASSWORD'], 
-                                [infisicalKey: 'CERT_EMAIL'], 
-                                [infisicalKey: 'DOMAIN'], 
-                                [infisicalKey: 'DHCP_SERVER'],
-                                [infisicalKey: 'K8S_TOKEN'],
-                                [infisicalKey: 'K8S_CERTIFICATE_KEY'],
-                                [infisicalKey: 'K8S_ENCRYPTION_AT_REST']
-                            ]
-                        )
-                    ]
-                ) {
-                    bat "vagrant up --provision $VAGRANT_EXTRA_ARGS"    // Ensure provisioners are rerun.
+                withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
+                    infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'DOMAIN_USER'],[infisicalKey: 'DOMAIN_PASSWORD'],[infisicalKey: 'DOMAIN'],[infisicalKey: 'DHCP_SERVER']])]) 
+                {
+                    bat "vagrant up $VAGRANT_EXTRA_ARGS"
                 }
             }
         }
-        stage('Ensure Pull Request') {
+        stage('Stage 1 Provision') {
             agent { label 'linux' }
-            when {
-                allOf {
-                    changeset "**/*"
-                    expression { !params.TEARDOWN }
-                }
-            }
             steps {
-                withCredentials([string(credentialsId: 'GithubToken', variable: 'GITHUB_TOKEN')]) {
-                    sh '''
-                        set -e
-                        
-                        existing_pr=$(gh pr list --base main --head dev --json number --jq '.[0].number')
-
-                        if [ -n "$existing_pr" ]; then
-                          echo "PR #$existing_pr exists. Commenting..."
-                          gh pr comment $existing_pr --body "✅ Jenkins pipeline succeeded for commit $(git rev-parse --short HEAD)"
-                        else
-                          echo "No PR found. Creating a new one..."
-                          gh pr create \
-                            --base main \
-                            --head dev \
-                            --title "Promote dev to main" \
-                            --body "Automated PR created by Jenkins after successful pipeline run."
-                        fi
-                    '''
+                withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
+                    infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'DOMAIN_PASSWORD'],[infisicalKey: 'DOMAIN'],[infisicalKey: 'NEW_SSH_PASSWORD']])]) 
+                {
+                    script {
+                        sh '''
+                            chmod +x ./scripts/deploy_customizations.sh
+                            ./scripts/deploy_customizations.sh
+                            ansible-galaxy install -r ./ansible/requirements.yml -p /etc/ansible/roles --force
+                            
+                            ansible-playbook -i inventory.ini \
+                                ./ansible/stage1.yml\
+                                -e "new_ssh_password=${NEW_SSH_PASSWORD}" \
+                                -e "domain_password=${DOMAIN_PASSWORD}" \
+                                -e "domain=${DOMAIN}" \
+                                -e "k8s_version=${K8S_VERSION}"
+                        '''
+                    }
                 }
             }
         }
-        stage('Teardown') {
-            when {
-                expression { params.TEARDOWN }
-            }
+        stage('Init k8s Cluster') {
+            agent { label 'linux' }
             steps {
-                withInfisical(
-                    configuration: [
-                        infisicalCredentialId: 'infisical', 
-                        infisicalEnvironmentSlug: 'prod', 
-                        infisicalProjectSlug: 'homelab-b-h-sw', 
-                        infisicalUrl: 'https://app.infisical.com'
-                    ],
-                    infisicalSecrets: [
-                        infisicalSecret(
-                            includeImports: true, path: '/', secretValues: [
-                                [infisicalKey: 'DOMAIN_USER'], 
-                                [infisicalKey: 'DOMAIN_PASSWORD'], 
-                                [infisicalKey: 'DOMAIN'], 
-                                [infisicalKey: 'DHCP_SERVER']
-                            ]
-                        )
-                    ]
-                ) {
-                    bat """
-                        set CONTROLPLANE_NODES_COUNT=3
-                        set WORKER_NODES_COUNT=3
-                        vagrant destroy -f
-                    """
+                withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
+                    infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) 
+                {
+                    script {
+                        def servers = readFile('servers.txt').trim().split("\\r?\\n")
+
+                        def control_ips = servers.collect { line ->
+                            def f = line.split(',')
+                            def role = f[4]
+                            def ip = f[3]
+                            (role == 'controlplane' || role == 'init') ? ip : null
+                        }.findAll { it != null }
+
+                        echo "Control Plane IPs: ${control_ips}"
+
+                        def control_ips_json = control_ips.collect { "\"${it}\"" }.join(',')
+
+                        sh """
+                            ansible-playbook --limit=controlplane[0] -i inventory.ini \
+                                ./ansible/stage2_controlplane.yml \
+                                --extra-vars='{"mode":"init","controlplane_ips":[${control_ips_json}],"token":"${K8S_TOKEN}","certificate_key":"${K8S_CERTIFICATE_KEY}","pod_network_cidr":"${POD_NETWORK}"}'
+                            ansible-playbook --limit=controlplane[1:] -i inventory.ini \
+                                ./ansible/stage2_controlplane.yml \
+                                --extra-vars='{"mode":"controlplane","controlplane_ips":[${control_ips_json}],"token":"${K8S_TOKEN}","certificate_key":"${K8S_CERTIFICATE_KEY}","pod_network_cidr":"${POD_NETWORK}"}'
+                            ansible-playbook --limit=workers -i inventory.ini \
+                                ./ansible/stage2_worker.yml \
+                                --extra-vars='{"token":"${K8S_TOKEN}","certificate_key":"${K8S_CERTIFICATE_KEY}"}'
+                            ansible-playbook -i inventory.ini \
+                                ./ansible/k8s-encryption-at-rest.yml \
+                                --extra-vars='{"encryption_key":"${K8S_ENCRYPTION_AT_REST }"}'
+                        """                    
+                    }
                 }
             }
         }
