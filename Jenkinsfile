@@ -238,5 +238,21 @@ pipeline {
                 }
             }
         }
+        stage('Deploy k8s Apps') {
+            agent { label 'linux' }
+            steps {
+                withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
+                    infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) 
+                {
+                    script {
+                        sh """
+                            ansible-playbook -i inventory.ini \
+                                ./ansible/k8s-apps/metallb.yml                            
+                        """                    
+                    }
+                }
+            }
+        }
+
     }
 }
