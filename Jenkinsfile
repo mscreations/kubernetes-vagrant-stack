@@ -36,10 +36,10 @@ pipeline {
         bat("git config --global core.autocrlf false")
         checkout([
           $class: 'GitSCM',
-          branches: [name: 'dev'],
+          branches: [[name: 'dev']],
           doGenerateSubmoduleConfigurations: false,
-          extensions: [$class: 'WipeWorkspace'],
-          userRemoteConfigs: [url: 'git@github.com:mscreations/kubernetes-vagrant-stack.git', credentialsId: 'Github']
+          extensions: [[$class: 'WipeWorkspace']],
+          userRemoteConfigs: [[url: 'git@github.com:mscreations/kubernetes-vagrant-stack.git', credentialsId: 'Github']]
         ])
 
         powershell("""
