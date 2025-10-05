@@ -63,6 +63,9 @@ pipeline {
     }
     stage('Prepare Jenkins SSH Key') {
       agent { label 'linux' }
+      when {
+        expression { !params.TEARDOWN }
+      }
       steps {
         script {
           env.JENKINS_HOME_DIR = sh(
@@ -124,6 +127,9 @@ pipeline {
     }
     stage('Check VM Status') {
       agent { label 'hyperv' }
+      when {
+        expression { !params.TEARDOWN }
+      }
       steps {
         unstash(name: 'configFiles')
 
@@ -162,18 +168,36 @@ pipeline {
     stage('Run Vagrant') {
       agent { label 'hyperv' }
       when {
-        expression { env.SKIP_VAGRANT == 'false' }
+        anyOf {
+          expression { params.TEARDOWN }
+          expression { env.SKIP_VAGRANT == 'false' }
+        }
       }
       steps {
         withInfisical(
           configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
           infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'DOMAIN_USER'],[infisicalKey: 'DOMAIN_PASSWORD'],[infisicalKey: 'DOMAIN'],[infisicalKey: 'DHCP_SERVER']])]) {
-          bat("vagrant up $VAGRANT_EXTRA_ARGS")
+          if (params.TEARDOWN) {
+            echo(message: "Tearing down existing VMs")
+            bat("vagrant destroy -f")
+          }
+          else if (params.UPDATE_BOX) {
+            echo(message: "Updating Vagrant box and bringing up VMs")
+            bat("vagrant box update --box $VAGRANT_BOX")
+            bat("vagrant up $VAGRANT_EXTRA_ARGS")
+          }
+          else {
+            echo(message: "Bringing up VMs with Vagrant")
+            bat("vagrant up $VAGRANT_EXTRA_ARGS")
+          }
         }
       }
     }
     stage('Stage 1 Provision') {
       agent { label 'linux' }
+      when {
+        expression { !params.TEARDOWN }
+      }
       steps {
         withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
           infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'DOMAIN_PASSWORD'],[infisicalKey: 'DOMAIN'],[infisicalKey: 'NEW_SSH_PASSWORD']])]) {
@@ -196,6 +220,9 @@ pipeline {
     }
     stage('Init k8s Cluster') {
       agent { label 'linux' }
+      when {
+        expression { !params.TEARDOWN }
+      }
       steps {
         withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
           infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) 
@@ -248,6 +275,9 @@ pipeline {
     }
     stage('Deploy k8s Apps') {
       agent { label 'linux' }
+      when {
+        expression { !params.TEARDOWN }
+      }
       steps {
         withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
           infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) {
