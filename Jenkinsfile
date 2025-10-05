@@ -222,7 +222,6 @@ pipeline {
                   "controlplane_ips":[${control_ips_json}],
                   "token":"${K8S_TOKEN}",
                   "certificate_key":"${K8S_CERTIFICATE_KEY}",
-                  "pod_network_cidr":"${POD_NETWORK}",
                   "k8s_version":"${K8S_VERSION}",
                   "encryption_key":"${K8S_ENCRYPTION_AT_REST }"
                 }'
@@ -233,7 +232,6 @@ pipeline {
                   "controlplane_ips":[${control_ips_json}],
                   "token":"${K8S_TOKEN}",
                   "certificate_key":"${K8S_CERTIFICATE_KEY}",
-                  "pod_network_cidr":"${POD_NETWORK}",
                   "k8s_version":"${K8S_VERSION}",
                   "encryption_key":"${K8S_ENCRYPTION_AT_REST }"
                 }'
