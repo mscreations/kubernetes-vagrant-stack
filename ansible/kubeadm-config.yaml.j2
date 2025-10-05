@@ -1,3 +1,4 @@
+---
 {% if mode=="init" %}
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: InitConfiguration
@@ -50,13 +51,10 @@ apiServer:
       value: /etc/kubernetes/encryption-config.yaml
   extraVolumes:
     - name: encryption-config
-      hostPath:
-        path: /etc/kubernetes/encryption-config.yaml
-        type: File
-  extraVolumeMounts:
-    - name: encryption-config
+      hostPath: /etc/kubernetes/encryption-config.yaml
       mountPath: /etc/kubernetes/encryption-config.yaml
       readOnly: true
+      pathType: File
 
 controllerManager:
   extraArgs:
