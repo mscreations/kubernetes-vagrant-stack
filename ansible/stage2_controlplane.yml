@@ -155,17 +155,11 @@
         mode: '0644'
       when: not k8s_ca.stat.exists and mode in ["init", "controlplane"]
 
-    - name: Init cluster
+    - name: Init/Join cluster
       ansible.builtin.shell: |
         kubeadm init --config /tmp/kubeadm-config.yaml
       register: init_cluster
-      when: not k8s_ca.stat.exists and mode == "init"
-
-    - name: Join cluster
-      ansible.builtin.shell: |
-        kubeadm join --config /tmp/kubeadm-config.yaml --control-plane
-      register: join_cluster
-      when: not k8s_ca.stat.exists and mode == "controlplane"
+      when: not k8s_ca.stat.exists and mode in ["init", "controlplane"]
 
     - name: Create k8s config directory
       ansible.builtin.file:
