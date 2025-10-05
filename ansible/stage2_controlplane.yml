@@ -212,7 +212,6 @@
         name: calico
         chart_ref: projectcalico/tigera-operator
         namespace: tigera-operator
-        release_namespace: tigera-operator
         state: present
         kubeconfig: /home/vagrant/.kube/config
         values:

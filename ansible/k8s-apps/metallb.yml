@@ -27,7 +27,7 @@
               pod-security.kubernetes.io/audit: privileged
               pod-security.kubernetes.io/warn: privileged
       when: "'No resources found' in metallb_check.stderr"
-    
+
     - name: Add metallb helm repo
       kubernetes.core.helm_repository:
         name: metallb
@@ -40,7 +40,6 @@
         name: metallb
         chart_ref: metallb/metallb
         namespace: metallb-system
-        release_namespace: metallb-system
         state: present
         kubeconfig: /home/vagrant/.kube/config
       when: "'No resources found' in metallb_check.stderr"
