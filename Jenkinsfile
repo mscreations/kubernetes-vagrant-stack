@@ -177,18 +177,20 @@ pipeline {
         withInfisical(
           configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
           infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'DOMAIN_USER'],[infisicalKey: 'DOMAIN_PASSWORD'],[infisicalKey: 'DOMAIN'],[infisicalKey: 'DHCP_SERVER']])]) {
-          if (params.TEARDOWN) {
-            echo(message: "Tearing down existing VMs")
-            bat("vagrant destroy -f")
-          }
-          else if (params.UPDATE_BOX) {
-            echo(message: "Updating Vagrant box and bringing up VMs")
-            bat("vagrant box update --box $VAGRANT_BOX")
-            bat("vagrant up $VAGRANT_EXTRA_ARGS")
-          }
-          else {
-            echo(message: "Bringing up VMs with Vagrant")
-            bat("vagrant up $VAGRANT_EXTRA_ARGS")
+          script {
+            if (params.TEARDOWN) {
+              echo(message: "Tearing down existing VMs")
+              bat("vagrant destroy -f")
+            }
+            else if (params.UPDATE_BOX) {
+              echo(message: "Updating Vagrant box and bringing up VMs")
+              bat("vagrant box update --box $VAGRANT_BOX")
+              bat("vagrant up $VAGRANT_EXTRA_ARGS")
+            }
+            else {
+              echo(message: "Bringing up VMs with Vagrant")
+              bat("vagrant up $VAGRANT_EXTRA_ARGS")
+            }
           }
         }
       }
