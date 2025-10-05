@@ -34,6 +34,7 @@ pipeline {
       agent { label 'hyperv' }
       steps {
         bat("git config --global core.autocrlf false")
+        powershell("Remove-Item -Path 'customize\\' -Recurse -Force -ErrorAction SilentlyContinue")
         checkout([
           $class: 'GitSCM',
           branches: [[name: 'dev']],
@@ -43,7 +44,6 @@ pipeline {
         ])
 
         powershell("""
-          Remove-Item -Path 'customize\\' -Recurse -Force -ErrorAction SilentlyContinue
           Copy-Item -Path '..\\..\\Kubernetes\\customize\\*' -Destination 'customize\\' -Recurse -Force
         """)
 
