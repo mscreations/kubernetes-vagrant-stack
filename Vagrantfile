@@ -2,7 +2,6 @@
 # vi: set ft=ruby :
 
 NETWORK_PREFIX      = ENV['NETWORK_PREFIX']
-POD_NETWORK         = ENV['POD_NETWORK']
 VAGRANT_BOX         = ENV['VAGRANT_BOX']
 
 CONTROLPLANE_NODES_COUNT  = ENV['CONTROLPLANE_NODES_COUNT'].to_i
@@ -55,14 +54,14 @@ Vagrant.configure("2") do |config|
   config.vm.box = VAGRANT_BOX
   config.vm.synced_folder ".", "/vagrant", mount_options: ["uid=1000", "gid=1000"], smb_username: ENV['DOMAIN_USER'], smb_password: ENV['DOMAIN_PASSWORD']
   config.vm.allow_fstab_modification = true
-  
+
   config.ssh.insert_key = true
-  config.vm.provision "shell", 
+  config.vm.provision "shell",
     env: { "SSH_KEY" => ENV['SSH_KEY'] },
     inline: <<-SHELL
     if [ ! -z "${SSH_KEY}" ]; then
       AUTH_KEYS="/home/vagrant/.ssh/authorized_keys"
-      
+
       # Create .ssh dir if missing
       mkdir -p /home/vagrant/.ssh
       chown vagrant:vagrant /home/vagrant/.ssh
@@ -70,16 +69,16 @@ Vagrant.configure("2") do |config|
 
       # Append the key only if it is not already present
       grep -qxF "${SSH_KEY}" "$AUTH_KEYS" || echo "${SSH_KEY}" >> "$AUTH_KEYS"
-      
+
       chown vagrant:vagrant "$AUTH_KEYS"
       chmod 600 "$AUTH_KEYS"
-      
+
       echo "Custom SSH_KEY added successfully."
     else
       echo "SSH_KEY environment variable not set; skipping additional key."
     fi
   SHELL
-  
+
   servers.each do |server|
     config.vm.define server[NODE_NAME] do |node|
       node.vm.network "public_network", bridge: "LAN"
@@ -124,8 +123,8 @@ Vagrant.configure("2") do |config|
     trigger.info = "Disconnecting from the domain"
     trigger.on_error = :continue
     trigger.run_remote = {
-      path: "./scripts/unjoin_domain.sh", 
-      env: { 
+      path: "./scripts/unjoin_domain.sh",
+      env: {
         "DOMAIN_PASS" => ENV['DOMAIN_PASSWORD']
       }
     }
