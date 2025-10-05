@@ -43,6 +43,7 @@ pipeline {
         ])
 
         powershell("""
+          Remove-Item -Path 'customize\\' -Recurse -Force -ErrorAction SilentlyContinue
           Copy-Item -Path '..\\..\\Kubernetes\\customize\\*' -Destination 'customize\\' -Recurse -Force
         """)
 
