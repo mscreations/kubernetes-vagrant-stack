@@ -44,8 +44,10 @@ networking:
 
 apiServer:
   extraArgs:
-    profiling: "false"
-    encryption-provider-config: /etc/kubernetes/encryption-config.yaml
+    - name: profiling
+      value: "false"
+    - name: encryption-provider-config
+      value: /etc/kubernetes/encryption-config.yaml
   extraVolumes:
     - name: encryption-config
       hostPath:
@@ -58,18 +60,26 @@ apiServer:
 
 controllerManager:
   extraArgs:
-    bind-address: "0.0.0.0"
-    secure-port: "10257"
+    - name: bind-address
+      value: "0.0.0.0"
+    - name: secure-port
+      value: "10257"
 
 scheduler:
   extraArgs:
-    bind-address: "0.0.0.0"
-    secure-port: "10259"
+    - name: bind-address
+      value: "0.0.0.0"
+    - name: secure-port
+      value: "10259"
 
 etcd:
   local:
     extraArgs:
-      listen-metrics-urls: "https://{{ ansible_default_ipv4.address }}:2381"
-      cert-file: "/etc/kubernetes/pki/etcd/server.crt"
-      key-file: "/etc/kubernetes/pki/etcd/server.key"
-      trusted-ca-file: "/etc/kubernetes/pki/etcd/ca.crt"
+      - name: listen-metrics-urls
+        value: "https://{{ ansible_default_ipv4.address }}:2381"
+      - name: cert-file
+        value: "/etc/kubernetes/pki/etcd/server.crt"
+      - name: key-file
+        value: "/etc/kubernetes/pki/etcd/server.key"
+      - name: trusted-ca-file
+        value: "/etc/kubernetes/pki/etcd/ca.crt"
