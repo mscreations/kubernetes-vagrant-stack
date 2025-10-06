@@ -1,0 +1,72 @@
+---
+{% if mode=="init" %}
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: InitConfiguration
+
+bootstrapTokens:
+  - token: "{{ token }}"
+    ttl: "24h"
+
+certificateKey: "{{ certificate_key }}"
+
+localAPIEndpoint:
+  advertiseAddress: "{{ ansible_default_ipv4.address }}"
+  bindPort: 6443
+---
+# kubeadm ClusterConfiguration
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+
+kubernetesVersion: "latest"
+
+{% if setup_lb %}
+controlPlaneEndpoint: "{{ network_prefix }}.200:443"
+{% endif %}
+
+networking:
+  podSubnet: "10.244.0.0/16"
+  serviceSubnet: "10.96.0.0/12"
+
+apiServer:
+  extraArgs:
+    - name: profiling
+      value: "false"
+    - name: encryption-provider-config
+      value: /etc/kubernetes/encryption-config.yml
+  extraVolumes:
+    - name: encryption-config
+      hostPath: /etc/kubernetes/encryption-config.yml
+      mountPath: /etc/kubernetes/encryption-config.yml
+      readOnly: true
+      pathType: File
+
+controllerManager:
+  extraArgs:
+    - name: bind-address
+      value: "0.0.0.0"
+    - name: secure-port
+      value: "10257"
+
+scheduler:
+  extraArgs:
+    - name: bind-address
+      value: "0.0.0.0"
+    - name: secure-port
+      value: "10259"
+
+{% else %}
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: JoinConfiguration
+discovery:
+  bootstrapToken:
+    apiServerEndpoint: "{{ network_prefix }}.200:443"
+    token: "{{ token }}"
+    unsafeSkipCAVerification: true
+
+controlPlane:
+  certificateKey: "{{ certificate_key }}"
+  localAPIEndpoint:
+    advertiseAddress: "{{ ansible_default_ipv4.address }}"
+    bindPort: 6443
+
+{% endif %}

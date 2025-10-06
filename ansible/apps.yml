@@ -20,9 +20,9 @@
 
   tasks:
     ######################################################################
-    # Dynamic installers for GitHub-hosted tools
+    # Fetch once, build version map, share with all hosts
     ######################################################################
-    - name: Fetch latest release info
+    - name: Fetch latest release info (only once, delegated to localhost)
       ansible.builtin.uri:
         url: "{{ item.value }}"
         return_content: true
@@ -30,19 +30,30 @@
           Accept: "application/vnd.github.v3+json"
       loop: "{{ github_releases | dict2items }}"
       register: gh_releases
+      run_once: true
+      delegate_to: localhost
+      become: false
       changed_when: false
 
-    - name: Set facts for download URLs
+    - name: Build latest_versions fact (on localhost, once)
       ansible.builtin.set_fact:
         latest_versions: >-
           {{
             dict(gh_releases.results | map(attribute='item.key') |
                  zip(gh_releases.results | map(attribute='json.tag_name')))
           }}
+      run_once: true
+      delegate_to: localhost
+      become: false
 
-    - name: Debug release versions
+    - name: Share latest_versions fact with all hosts
+      ansible.builtin.set_fact:
+        latest_versions: "{{ hostvars[groups['all'][0]].latest_versions }}"
+
+    - name: Show latest versions
       ansible.builtin.debug:
         var: latest_versions
+      run_once: true
 
     ######################################################################
     # Install yq
@@ -107,7 +118,7 @@
       ansible.builtin.unarchive:
         src: "https://github.com/hidetatz/kubecolor/releases/download/{{ latest_versions.kubecolor }}/kubecolor_{{ latest_versions.kubecolor | regex_replace('^v','') }}_Linux_x86_64.tar.gz"
         dest: "{{ bin_dir }}"
-        mode: '0644'
+        mode: '0755'
         remote_src: true
         include: ["kubecolor"]
         creates: "{{ bin_dir }}/kubecolor"

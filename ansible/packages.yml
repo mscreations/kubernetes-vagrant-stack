@@ -18,7 +18,7 @@
       - realmd
       - adcli
       - neovim
-      - python3-kubernetes # Required for kubernetes.core ansible
+      - python3-pip
   
   tasks:
     - name: Update all packages
@@ -36,3 +36,10 @@
         name: editor
         state: selected
         path: /usr/bin/nvim
+
+    - name: Install latest kubernetes python client
+      ansible.builtin.pip:
+        name: kubernetes
+        state: latest
+        executable: pip3
+        extra_args: --break-system-packages
