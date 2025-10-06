@@ -12,23 +12,6 @@ certificateKey: "{{ certificate_key }}"
 localAPIEndpoint:
   advertiseAddress: "{{ ansible_default_ipv4.address }}"
   bindPort: 6443
-
-{% else %}
-apiVersion: kubeadm.k8s.io/v1beta4
-kind: JoinConfiguration
-discovery:
-  bootstrapToken:
-    apiServerEndpoint: "{{ network_prefix }}.200:443"
-    token: "{{ token }}"
-    unsafeSkipCAVerification: true
-
-controlPlane:
-  certificateKey: "{{ certificate_key }}"
-  localAPIEndpoint:
-    advertiseAddress: "{{ ansible_default_ipv4.address }}"
-    bindPort: 6443
-
-{% endif %}
 ---
 # kubeadm ClusterConfiguration
 apiVersion: kubeadm.k8s.io/v1beta4
@@ -82,3 +65,20 @@ etcd:
         value: "/etc/kubernetes/pki/etcd/server.key"
       - name: trusted-ca-file
         value: "/etc/kubernetes/pki/etcd/ca.crt"
+
+{% else %}
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: JoinConfiguration
+discovery:
+  bootstrapToken:
+    apiServerEndpoint: "{{ network_prefix }}.200:443"
+    token: "{{ token }}"
+    unsafeSkipCAVerification: true
+
+controlPlane:
+  certificateKey: "{{ certificate_key }}"
+  localAPIEndpoint:
+    advertiseAddress: "{{ ansible_default_ipv4.address }}"
+    bindPort: 6443
+
+{% endif %}
