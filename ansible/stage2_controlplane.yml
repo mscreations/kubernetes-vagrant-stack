@@ -136,7 +136,7 @@
 
     - name: Enable encryption-at-rest
       ansible.builtin.copy:
-        dest: "/etc/kubernetes/encryption-config.yaml"
+        dest: "/etc/kubernetes/encryption-config.yml"
         content: |
           apiVersion: apiserver.config.k8s.io/v1
           kind: EncryptionConfiguration
@@ -157,7 +157,7 @@
 
     - name: Init cluster 
       ansible.builtin.shell: |
-        kubeadm init --config /tmp/kubeadm-config.yaml
+        kubeadm init --config /tmp/kubeadm-config.yml
       register: init_cluster
       when: not k8s_ca.stat.exists and mode == "init"
 
