@@ -277,6 +277,8 @@ pipeline {
             sh("""
               ansible-playbook -i inventory.ini \
                 ./ansible/k8s-apps/metallb.yml
+              ansible-playbook -i inventory.ini \
+                ./ansible/k8s-apps/monitoring.yml
             """)
           }
         }

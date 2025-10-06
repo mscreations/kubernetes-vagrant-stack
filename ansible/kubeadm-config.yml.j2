@@ -54,6 +54,12 @@ scheduler:
     - name: secure-port
       value: "10259"
 
+etcd:
+  local:
+    extraArgs:
+      - name: listen-metric-urls
+        value: "http://127.0.0.1:2381,http://{{ ansible_default_ipv4.address }}:2381"
+
 {% else %}
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: JoinConfiguration
