@@ -269,8 +269,7 @@ pipeline {
               ansible-playbook --limit=workers -i inventory.ini \
                 ./ansible/stage2_worker.yml \
                 --extra-vars='{
-                  "token":"${K8S_TOKEN}",
-                  "certificate_key":"${K8S_CERTIFICATE_KEY}"
+                  "token":"${K8S_TOKEN}"
                 }'
             """)
           }

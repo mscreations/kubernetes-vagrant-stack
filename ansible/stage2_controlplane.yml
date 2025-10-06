@@ -155,11 +155,17 @@
         mode: '0644'
       when: not k8s_ca.stat.exists and mode in ["init", "controlplane"]
 
-    - name: Init/Join cluster
+    - name: Init cluster 
       ansible.builtin.shell: |
-        kubeadm init --config /tmp/kubeadm-config.yaml --upload-certs
+        kubeadm init --config /tmp/kubeadm-config.yaml
       register: init_cluster
-      when: not k8s_ca.stat.exists and mode in ["init", "controlplane"]
+      when: not k8s_ca.stat.exists and mode == "init"
+
+    - name: Join cluster
+      ansible.builtin.shell: |
+        kubeadm join --config /tmp/kubeadm-config.yml
+      register: join_cluster
+      when: not k8s_ca.stat.exists and mode == "controlplane"
 
     - name: Create k8s config directory
       ansible.builtin.file:
@@ -167,7 +173,7 @@
         state: directory
         owner: "{{ item.owner }}"
         group: "{{ item.group }}"
-      when: init_cluster is succeeded
+      when: init_cluster is succeeded or join_cluster is succeeded
       with_items:
         - { path: "/home/vagrant/.kube", owner: "vagrant", group: "vagrant" }
         - { path: "/root/.kube", owner: "root", group: "root" }
@@ -180,7 +186,7 @@
         group: "{{ item.group }}"
         mode: 0600
         remote_src: true
-      when: init_cluster is succeeded
+      when: init_cluster is succeeded or join_cluster is succeeded
       with_items:
         - { path: "/home/vagrant/.kube", owner: "vagrant", group: "vagrant" }
         - { path: "/root/.kube", owner: "root", group: "root" }
