@@ -54,18 +54,6 @@ scheduler:
     - name: secure-port
       value: "10259"
 
-etcd:
-  local:
-    extraArgs:
-      - name: listen-metrics-urls
-        value: "https://{{ ansible_default_ipv4.address }}:2381"
-      - name: cert-file
-        value: "/etc/kubernetes/pki/etcd/server.crt"
-      - name: key-file
-        value: "/etc/kubernetes/pki/etcd/server.key"
-      - name: trusted-ca-file
-        value: "/etc/kubernetes/pki/etcd/ca.crt"
-
 {% else %}
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: JoinConfiguration

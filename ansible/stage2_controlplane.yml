@@ -1,7 +1,6 @@
 ---
 - name: Stage 2 Controlplane Nodes
   hosts: controlplane
-  serial: 1
   become: true
 
   tasks:
@@ -121,6 +120,14 @@
     # Init Cluster
     #############################################################################################################
 
+    - name: Add etcdctl alias to .zshrc
+      ansible.builtin.lineinfile:
+        path: "{{ item }}"
+        regexp: "^alias etcdctl="
+        line: "alias etcdctl='kubectl exec -n kube-system etcd-{{ inventory_hostname }} -- etcdctl --cacert /etc/kubernetes/pki/etcd/ca.crt --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key'"
+        insertafter: EOF
+        create: true
+
     - name: Check if cluster has been initialized already
       ansible.builtin.stat:
         path: /etc/kubernetes/pki/ca.key
@@ -166,6 +173,7 @@
       ansible.builtin.shell: |
         kubeadm join --config /tmp/kubeadm-config.yml
       register: join_cluster
+      throttle: 1
       when: not k8s_ca.stat.exists and mode == "controlplane"
 
     - name: Create k8s config directory
