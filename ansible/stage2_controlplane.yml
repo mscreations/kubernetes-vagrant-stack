@@ -157,7 +157,7 @@
 
     - name: Init/Join cluster
       ansible.builtin.shell: |
-        kubeadm init --config /tmp/kubeadm-config.yaml
+        kubeadm init --config /tmp/kubeadm-config.yaml --upload-certs
       register: init_cluster
       when: not k8s_ca.stat.exists and mode in ["init", "controlplane"]
 
