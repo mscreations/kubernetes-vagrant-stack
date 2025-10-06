@@ -282,5 +282,35 @@ pipeline {
         }
       }
     }
+    stage('Ensure Pull Request') {
+      agent { label 'linux' }
+      when {
+        allOf {
+          changeset "**/*"
+          expression { !params.TEARDOWN }
+        }
+      }
+      steps {
+        withCredentials([string(credentialsId: 'GithubToken', variable: 'GITHUB_TOKEN')]) {
+          sh '''
+            set -e
+
+            existing_pr=$(gh pr list --base main --head dev --json number --jq '.[0].number')
+
+            if [ -n "$existing_pr" ]; then
+              echo "PR #$existing_pr exists. Commenting..."
+              gh pr comment $existing_pr --body "✅ Jenkins build #$BUILD_NUMBER succeeded for commit $(git rev-parse --short HEAD)"
+            else
+              echo "No PR found. Creating a new one..."
+              gh pr create \
+                --base main \
+                --head dev \
+                --title "Promote dev to main" \
+                --body "Automated PR created by Jenkins after successful build #$BUILD_NUMBER"
+            fi
+          '''
+        }
+      }
+    }
   }
 }
