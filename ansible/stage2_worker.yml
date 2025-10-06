@@ -17,7 +17,6 @@
       ansible.builtin.shell: |
         kubeadm join {{network_prefix}}.200:443 \
           --token {{ token }} \
-          --discovery-token-unsafe-skip-ca-verification \
-          --certificate-key {{ certificate_key }}
+          --discovery-token-unsafe-skip-ca-verification
       register: join_cluster
       when: not kubelet_conf.stat.exists
