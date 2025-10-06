@@ -222,65 +222,65 @@ pipeline {
         }
       }
     }
-    stage('Init k8s Cluster') {
-      agent { label 'linux' }
-      when {
-        expression { !params.TEARDOWN }
-      }
-      steps {
-        withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
-          infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) 
-        {
-          script {
-            def servers = readFile('servers.txt').trim().split("\\r?\\n")
+    // stage('Init k8s Cluster') {
+    //   agent { label 'linux' }
+    //   when {
+    //     expression { !params.TEARDOWN }
+    //   }
+    //   steps {
+    //     withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
+    //       infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) 
+    //     {
+    //       script {
+    //         def servers = readFile('servers.txt').trim().split("\\r?\\n")
 
-            def control_ips = servers.collect { line ->
-              def f = line.split(',')
-              def role = f[4]
-              def ip = f[3]
-              (role == 'controlplane' || role == 'init') ? ip : null
-            }.findAll { it != null }
+    //         def control_ips = servers.collect { line ->
+    //           def f = line.split(',')
+    //           def role = f[4]
+    //           def ip = f[3]
+    //           (role == 'controlplane' || role == 'init') ? ip : null
+    //         }.findAll { it != null }
 
-            echo(message: "Control Plane IPs: ${control_ips}")
+    //         echo(message: "Control Plane IPs: ${control_ips}")
 
-            def control_ips_json = control_ips.collect { "\"${it}\"" }.join(',')
+    //         def control_ips_json = control_ips.collect { "\"${it}\"" }.join(',')
 
-            sh("""
-              ansible-playbook -i inventory.ini \
-                ./ansible/stage2_controlplane.yml \
-                --extra-vars='{
-                  "controlplane_ips":[${control_ips_json}],
-                  "token":"${K8S_TOKEN}",
-                  "certificate_key":"${K8S_CERTIFICATE_KEY}",
-                  "k8s_version":"${K8S_VERSION}",
-                  "encryption_key":"${K8S_ENCRYPTION_AT_REST }"
-                }'
-              ansible-playbook -i inventory.ini \
-                ./ansible/stage2_worker.yml \
-                --extra-vars='{
-                  "token":"${K8S_TOKEN}"
-                }'
-            """)
-          }
-        }
-      }
-    }
-    stage('Deploy k8s Apps') {
-      agent { label 'linux' }
-      when {
-        expression { !params.TEARDOWN }
-      }
-      steps {
-        withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
-          infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) {
-          script {
-            sh("""
-              ansible-playbook -i inventory.ini \
-                ./ansible/k8s-apps/metallb.yml
-            """)
-          }
-        }
-      }
-    }
+    //         sh("""
+    //           ansible-playbook -i inventory.ini \
+    //             ./ansible/stage2_controlplane.yml \
+    //             --extra-vars='{
+    //               "controlplane_ips":[${control_ips_json}],
+    //               "token":"${K8S_TOKEN}",
+    //               "certificate_key":"${K8S_CERTIFICATE_KEY}",
+    //               "k8s_version":"${K8S_VERSION}",
+    //               "encryption_key":"${K8S_ENCRYPTION_AT_REST }"
+    //             }'
+    //           ansible-playbook -i inventory.ini \
+    //             ./ansible/stage2_worker.yml \
+    //             --extra-vars='{
+    //               "token":"${K8S_TOKEN}"
+    //             }'
+    //         """)
+    //       }
+    //     }
+    //   }
+    // }
+    // stage('Deploy k8s Apps') {
+    //   agent { label 'linux' }
+    //   when {
+    //     expression { !params.TEARDOWN }
+    //   }
+    //   steps {
+    //     withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
+    //       infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) {
+    //       script {
+    //         sh("""
+    //           ansible-playbook -i inventory.ini \
+    //             ./ansible/k8s-apps/metallb.yml
+    //         """)
+    //       }
+    //     }
+    //   }
+    // }
   }
 }
