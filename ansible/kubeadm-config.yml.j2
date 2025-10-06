@@ -57,7 +57,7 @@ scheduler:
 etcd:
   local:
     extraArgs:
-      - name: listen-metric-urls
+      - name: listen-metrics-urls
         value: "http://127.0.0.1:2381,http://{{ ansible_default_ipv4.address }}:2381"
 
 {% else %}
