@@ -127,6 +127,10 @@
         line: "alias etcdctl='kubectl exec -n kube-system etcd-{{ inventory_hostname }} -- etcdctl --cacert /etc/kubernetes/pki/etcd/ca.crt --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key'"
         insertafter: EOF
         create: true
+      with_items:
+        - /root/.zshrc
+        - /home/vagrant/.zshrc
+        - /etc/skel/.zshrc
 
     - name: Check if cluster has been initialized already
       ansible.builtin.stat:
