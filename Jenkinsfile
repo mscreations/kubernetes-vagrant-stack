@@ -246,27 +246,16 @@ pipeline {
             def control_ips_json = control_ips.collect { "\"${it}\"" }.join(',')
 
             sh("""
-              ansible-playbook --limit=controlplane[0] -i inventory.ini \
+              ansible-playbook -i inventory.ini \
                 ./ansible/stage2_controlplane.yml \
                 --extra-vars='{
-                  "mode":"init",
                   "controlplane_ips":[${control_ips_json}],
                   "token":"${K8S_TOKEN}",
                   "certificate_key":"${K8S_CERTIFICATE_KEY}",
                   "k8s_version":"${K8S_VERSION}",
                   "encryption_key":"${K8S_ENCRYPTION_AT_REST }"
                 }'
-              ansible-playbook --limit=controlplane[1:] -i inventory.ini \
-                ./ansible/stage2_controlplane.yml \
-                --extra-vars='{
-                  "mode":"controlplane",
-                  "controlplane_ips":[${control_ips_json}],
-                  "token":"${K8S_TOKEN}",
-                  "certificate_key":"${K8S_CERTIFICATE_KEY}",
-                  "k8s_version":"${K8S_VERSION}",
-                  "encryption_key":"${K8S_ENCRYPTION_AT_REST }"
-                }'
-              ansible-playbook --limit=workers -i inventory.ini \
+              ansible-playbook -i inventory.ini \
                 ./ansible/stage2_worker.yml \
                 --extra-vars='{
                   "token":"${K8S_TOKEN}"

@@ -1,6 +1,7 @@
 ---
 - name: Stage 2 Controlplane Nodes
-  hosts: all
+  hosts: controlplane
+  serial: 1
   become: true
 
   tasks:

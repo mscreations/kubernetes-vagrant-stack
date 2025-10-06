@@ -1,6 +1,6 @@
 ---
 - name: Stage 2 Worker Playbook
-  hosts: all
+  hosts: workers
   become: yes
 
   tasks:
