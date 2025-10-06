@@ -1,7 +1,6 @@
 ---
 - name: Stage 2 Controlplane Nodes
   hosts: controlplane
-  serial: 1
   become: true
 
   tasks:
@@ -166,6 +165,7 @@
       ansible.builtin.shell: |
         kubeadm join --config /tmp/kubeadm-config.yml
       register: join_cluster
+      throttle: 1
       when: not k8s_ca.stat.exists and mode == "controlplane"
 
     - name: Create k8s config directory
