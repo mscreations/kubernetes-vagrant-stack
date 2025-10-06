@@ -18,6 +18,7 @@ apiVersion: kubeadm.k8s.io/v1beta4
 kind: JoinConfiguration
 discovery:
   bootstrapToken:
+    apiServerEndpoint: "{{ network_prefix }}.200:443"
     token: "{{ token }}"
     unsafeSkipCAVerification: true
 
