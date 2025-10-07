@@ -15,7 +15,6 @@
         name: metrics-server
         chart_ref: metrics-server/metrics-server
         namespace: kube-system
-        release_namespace: kube-system
         create_namespace: false
         state: present
         kubeconfig: /home/vagrant/.kube/config
@@ -45,7 +44,6 @@
         name: kube-prometheus-stack
         chart_ref: prometheus-community/kube-prometheus-stack
         namespace: kube-prometheus-stack
-        release_namespace: kube-prometheus-stack
         create_namespace: true
         state: present
         kubeconfig: /home/vagrant/.kube/config
