@@ -1,0 +1,23 @@
+---
+- name: Backup etcd data
+  hosts: controlplane[0]
+  become: true
+  vars:
+    backup_dir: /mnt/k8s-data/backups
+    days_to_retain: 30
+
+  tasks:
+    - name: Generate etcd backup manifest from template
+      ansible.builtin.template:
+        src: manifests/etcd-backup-manifest.yml.j2
+        dest: /tmp/etcd-backup-manifest.yml
+        mode: '0644'
+
+    - name: Deploy etcd backup cronjob
+      community.kubernetes.k8s:
+        state: present
+        definition: "{{ lookup('file', '/tmp/etcd-backup-manifest.yml') }}"
+      register: etcd_backup_deploy
+      until: etcd_backup_deploy is succeeded
+      retries: 5
+      delay: 10
