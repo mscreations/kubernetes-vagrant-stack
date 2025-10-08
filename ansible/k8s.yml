@@ -84,11 +84,12 @@
         path: /mnt/k8s-data
         state: directory
         mode: '0755'
+      ignore_errors: true
 
-    - name: Add k8s persistence mount
+    - name: Add k8s data mount
       ansible.posix.mount:
         name: /mnt/k8s-data
-        src: "winserver.{{ domain }}:/k8s-persistence"
+        src: "winserver.{{ domain }}:/k8s-data"
         fstype: nfs4
         opts: "sec=sys,vers=4.1,_netdev"
         state: mounted
