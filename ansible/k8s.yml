@@ -3,7 +3,7 @@
   hosts: all
   become: true
 
-  tasks:        
+  tasks:
     - name: Add Kubernetes APT repository
       ansible.builtin.deb822_repository:
         name: kubernetes
@@ -23,7 +23,7 @@
         - kubeadm
         - kubectl
         - kubelet
-      
+
     - name: Hold k8s tools in Apt
       ansible.builtin.command: apt-mark hold kubeadm kubelet kubectl
 
@@ -79,4 +79,18 @@
         - { path: '/root/.zshrc', owner: 'root', group: 'root' }
         - { path: '/etc/skel/.zshrc', owner: 'root', group: 'root' }
 
-    
+    - name: Create k8s persistent volume mount directory
+      ansible.builtin.file:
+        path: /mnt/k8s-data
+        state: directory
+        mode: '0755'
+
+    - name: Add k8s persistence mount
+      ansible.posix.mount:
+        name: /mnt/k8s-data
+        src: "winserver.{{ domain }}:/k8s-persistence"
+        fstype: nfs4
+        opts: "sec=sys,vers=4.1,_netdev"
+        state: mounted
+        dump: 0
+        passno: 0
