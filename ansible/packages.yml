@@ -10,7 +10,6 @@
       - gnupg 
       - lsb-release 
       - socat
-      - python3-passlib # Reset vagrant password
       - unzip   # For app installs
       # For AD
       - sssd-ad
