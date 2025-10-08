@@ -207,8 +207,9 @@ pipeline {
           infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'DOMAIN_PASSWORD'],[infisicalKey: 'DOMAIN'],[infisicalKey: 'NEW_SSH_PASSWORD']])]) {
           script {
             sh('''
-              chmod +x ./scripts/deploy_customizations.sh
-              ./scripts/deploy_customizations.sh
+              chmod +x ./scripts/execute_ansible_folder.sh
+              ./scripts/execute_ansible_folder.sh customize
+
               ansible-galaxy install -r ./ansible/requirements.yml -p /etc/ansible/roles --force
 
               ansible-playbook -i inventory.ini \
@@ -275,10 +276,8 @@ pipeline {
           infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) {
           script {
             sh("""
-              ansible-playbook -i inventory.ini \
-                ./ansible/k8s-apps/metallb.yml
-              ansible-playbook -i inventory.ini \
-                ./ansible/k8s-apps/monitoring.yml
+              chmod +x ./scripts/execute_ansible_folder.sh
+              ./scripts/execute_ansible_folder.sh ansible/k8s-apps
             """)
           }
         }
