@@ -14,7 +14,7 @@
         mode: '0644'
 
     - name: Deploy etcd backup cronjob
-      community.kubernetes.k8s:
+      kubernetes.core.k8s:
         state: present
         definition: "{{ lookup('file', '/tmp/etcd-backup-manifest.yml') }}"
       register: etcd_backup_deploy
