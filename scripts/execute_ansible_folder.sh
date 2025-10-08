@@ -19,7 +19,7 @@ fi
 
 shopt -s nullglob
 
-for playbook in "$folder"/*.y{a,}ml; do
+for playbook in $(ls "$folder"/*.y{a,}ml | sort -V); do
   echo "Running playbook: $playbook"
   ansible-playbook -i inventory.ini "$playbook"
 done
