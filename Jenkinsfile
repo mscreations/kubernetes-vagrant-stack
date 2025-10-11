@@ -203,20 +203,16 @@ pipeline {
         expression { !params.TEARDOWN }
       }
       steps {
-        withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
+        withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
           infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'DOMAIN_PASSWORD'],[infisicalKey: 'DOMAIN'],[infisicalKey: 'NEW_SSH_PASSWORD']])]) {
           script {
             sh('''
-              chmod +x ./scripts/deploy_customizations.sh
-              ./scripts/deploy_customizations.sh
-              ansible-galaxy install -r ./ansible/requirements.yml -p /etc/ansible/roles --force
+              chmod +x ./scripts/execute_ansible_folder.sh
+              ./scripts/execute_ansible_folder.sh customize
 
-              ansible-playbook -i inventory.ini \
-                ./ansible/stage1.yml\
-                -e "new_ssh_password=${NEW_SSH_PASSWORD}" \
-                -e "domain_password=${DOMAIN_PASSWORD}" \
-                -e "domain=${DOMAIN}" \
-                -e "k8s_version=${K8S_VERSION}"
+              ansible-galaxy install -r ./ansible/requirements.yaml -p /etc/ansible/roles --force
+
+              ansible-playbook -i inventory.ini ./ansible/stage1.yaml
             ''')
           }
         }
@@ -228,8 +224,8 @@ pipeline {
         expression { !params.TEARDOWN }
       }
       steps {
-        withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
-          infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) 
+        withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
+          infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])])
         {
           script {
             def servers = readFile('servers.txt').trim().split("\\r?\\n")
@@ -247,19 +243,11 @@ pipeline {
 
             sh("""
               ansible-playbook -i inventory.ini \
-                ./ansible/stage2_controlplane.yml \
+                ./ansible/stage2_controlplane.yaml \
                 --extra-vars='{
-                  "controlplane_ips":[${control_ips_json}],
-                  "token":"${K8S_TOKEN}",
-                  "certificate_key":"${K8S_CERTIFICATE_KEY}",
-                  "k8s_version":"${K8S_VERSION}",
-                  "encryption_key":"${K8S_ENCRYPTION_AT_REST }"
+                  "controlplane_ips":[${control_ips_json}]
                 }'
-              ansible-playbook -i inventory.ini \
-                ./ansible/stage2_worker.yml \
-                --extra-vars='{
-                  "token":"${K8S_TOKEN}"
-                }'
+              ansible-playbook -i inventory.ini ./ansible/stage2_worker.yaml
             """)
           }
         }
@@ -272,12 +260,23 @@ pipeline {
       }
       steps {
         withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
-          infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) {
-          script {
-            sh("""
-              ansible-playbook -i inventory.ini \
-                ./ansible/k8s-apps/metallb.yml
-            """)
+          infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'CERT_EMAIL']])])
+        {
+          withCredentials([
+            string(credentialsId: 'InfisicalClientID',
+            variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_ID'),
+            string(credentialsId: 'InfisicalClientSecret',
+            variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET')])
+          {
+            script {
+              sh("""
+                # Install Infisical Operator for cluster secret management
+                ansible-playbook -i inventory.ini ./ansible/k8s-apps/infisical.yaml
+
+                chmod +x ./scripts/execute_ansible_folder.sh
+                ./scripts/execute_ansible_folder.sh ansible/k8s-apps
+              """)
+            }
           }
         }
       }

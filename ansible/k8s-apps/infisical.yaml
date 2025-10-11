@@ -1,0 +1,33 @@
+---
+- name: Deploy Infisical operator
+  hosts: controlplane[0]
+  become: true
+
+  tasks:
+    - name: Add Infisical Helm repository
+      kubernetes.core.helm_repository:
+        name: infisical
+        repo_url: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
+        state: present
+
+    - name: Install Infisical Helm chart
+      kubernetes.core.helm:
+        name: infisical
+        chart_ref: infisical/secrets-operator
+        namespace: infisical
+        create_namespace: true
+        state: present
+
+    - name: Create Infisical secret with client credentials
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: universal-auth-credentials
+            namespace: infisical
+          type: Opaque
+          data:
+            clientId: "{{ lookup('env', 'INFISICAL_UNIVERSAL_AUTH_CLIENT_ID') | b64encode }}"
+            clientSecret: "{{ lookup('env', 'INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET') | b64encode  }}"

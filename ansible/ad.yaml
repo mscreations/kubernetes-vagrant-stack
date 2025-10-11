@@ -4,6 +4,11 @@
   become: true
 
   tasks:
+    - name: Set variables
+      ansible.builtin.set_fact:
+        domain: "{{ lookup('env', 'DOMAIN') }}"
+        domain_password: "{{ lookup('env', 'DOMAIN_PASSWORD') }}"
+
     - name: Check if machine is already joined to the domain
       ansible.builtin.command: realm list
       register: realm_status
@@ -41,11 +46,11 @@
       register: realm_join
       notify: reboot_if_needed
       failed_when: "'Already joined' not in realm_join.stderr and realm_join.rc != 0"
- 
+
     - name: Enable mkhomedir for PAM
       ansible.builtin.command: pam-auth-update --enable mkhomedir
       when: domain not in realm_status.stdout
-    
+
     - name: Flush SSSD cache
       ansible.builtin.command: sss_cache -E
       when: domain not in realm_status.stdout

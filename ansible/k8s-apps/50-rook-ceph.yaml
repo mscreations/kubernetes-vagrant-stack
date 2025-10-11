@@ -1,0 +1,55 @@
+---
+- name: Deploy Rook-Ceph
+  hosts: controlplane[0]
+  become: yes
+
+  tasks:
+    - name: Add Rook Ceph Helm Repo
+      kubernetes.core.helm_repository:
+        name: rook-release
+        repo_url: https://charts.rook.io/release
+
+    - name: Install Rook-Ceph Operator
+      kubernetes.core.helm:
+        name: rook-ceph
+        chart_ref: rook-release/rook-ceph
+        namespace: rook-ceph
+        create_namespace: true
+        values:
+          image:
+            repository: mirror.gcr.io/rook/ceph
+            csi:
+              serviceMonitor:
+                enabled: true
+                interval: 10s
+                labels:
+                  release: prometheus
+            enableDiscoveryDaemon: true
+            monitoring:
+              enabled: true
+        state: present
+
+    - name: Install Rook Ceph Cluster
+      kubernetes.core.helm:
+        name: rook-ceph-cluster
+        chart_ref: rook-release/rook-ceph-cluster
+        namespace: rook-ceph
+        values:
+          operatorNamespace: rook-ceph
+          toolbox:
+            enabled: true
+          cephClusterSpec:
+            mgr:
+              count: 2
+              allowMultiplePerNode: false
+              modules:
+                - name: rook
+                  enabled: true
+            dashboard:
+              enabled: true
+              ssl: true
+          cephObjectStores: null
+          cephBlockPools: null
+          monitoring:
+            enabled: true
+        state: present
