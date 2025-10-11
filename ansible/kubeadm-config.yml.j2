@@ -10,10 +10,10 @@ apiVersion: kubeadm.k8s.io/v1beta4
 kind: InitConfiguration
 
 bootstrapTokens:
-  - token: "{{ token }}"
+  - token: "{{ lookup('env', 'K8S_TOKEN') }}"
     ttl: "24h"
 
-certificateKey: "{{ certificate_key }}"
+certificateKey: "{{ lookup('env', 'K8S_CERTIFICATE_KEY') }}"
 
 localAPIEndpoint:
   advertiseAddress: "{{ ansible_default_ipv4.address }}"
@@ -24,10 +24,10 @@ apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
 
 kubernetesVersion: >-
-  {% if k8s_version is match("^\d+\.\d+$") %}
-  stable-{{ k8s_version }}
+  {% if lookup('env', 'K8S_VERSION') is match("^\d+\.\d+$") %}
+  stable-{{ lookup('env', 'K8S_VERSION') }}
   {% else %}
-  v{{ k8s_version }}
+  v{{ lookup('env', 'K8S_VERSION') }}
   {% endif %}
 
 {% if setup_lb %}
@@ -77,11 +77,11 @@ kind: JoinConfiguration
 discovery:
   bootstrapToken:
     apiServerEndpoint: "{{ network_prefix }}.200:443"
-    token: "{{ token }}"
+    token: "{{ lookup('env', 'K8S_TOKEN') }}"
     unsafeSkipCAVerification: true
 
 controlPlane:
-  certificateKey: "{{ certificate_key }}"
+  certificateKey: "{{ lookup('env', 'K8S_CERTIFICATE_KEY') }}"
   localAPIEndpoint:
     advertiseAddress: "{{ ansible_default_ipv4.address }}"
     bindPort: 6443

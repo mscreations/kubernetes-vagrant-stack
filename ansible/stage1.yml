@@ -17,17 +17,9 @@
 
 - name: Join to domain
   ansible.builtin.import_playbook: ad.yml
-  vars:
-    domain_password: "{{ domain_password }}"
-    domain: "{{ domain }}"
 
 - name: Install k8s components
   ansible.builtin.import_playbook: k8s.yml
-  vars:
-    k8s_version: "{{ k8s_version }}"
-    domain: "{{ domain }}"
 
 - name: Perform cleanup tasks
   ansible.builtin.import_playbook: cleanup.yml
-  vars:
-    new_ssh_password: "{{ new_ssh_password | default('') }}"

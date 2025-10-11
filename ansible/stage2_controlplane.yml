@@ -31,7 +31,7 @@
             process haproxy
             weight 30
           }
-          global_defs { 
+          global_defs {
             router_id KubernetesVIP
           }
 
@@ -160,7 +160,7 @@
                 - secretbox:
                     keys:
                       - name: key1
-                        secret: {{ encryption_key }}
+                        secret: {{ lookup('env', 'K8S_ENCRYPTION_AT_REST') }}
                 - identity: {}
         owner: root
         group: root

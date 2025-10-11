@@ -4,6 +4,10 @@
   become: true
 
   tasks:
+    - name: Set variables
+      ansible.builtin.set_fact:
+        new_ssh_password: "{{ lookup('env', 'NEW_SSH_PASSWORD') | default('') }}"
+
     - name: Check if vagrant password is still default
       ansible.builtin.expect:
         command: "su - vagrant -c 'id'"

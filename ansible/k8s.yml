@@ -4,6 +4,11 @@
   become: true
 
   tasks:
+    - name: Set variables
+      ansible.builtin.set_fact:
+        k8s_version: "{{ lookup('env', 'K8S_VERSION') }}"
+        domain: "{{ lookup('env', 'DOMAIN') }}"
+
     - name: Add Kubernetes APT repository
       ansible.builtin.deb822_repository:
         name: kubernetes
