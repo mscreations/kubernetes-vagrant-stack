@@ -5,13 +5,13 @@
 
   tasks:
     - name: Add Infisical Helm repository
-      community.kubernetes.helm_repository:
+      kubernetes.core.helm_repository:
         name: infisical
         repo_url: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
         state: present
 
     - name: Install Infisical Helm chart
-      community.kubernetes.helm:
+      kubernetes.core.helm:
         name: infisical
         chart_ref: infisical/secrets-operator
         namespace: infisical
