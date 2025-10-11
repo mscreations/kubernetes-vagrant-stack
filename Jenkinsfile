@@ -259,15 +259,24 @@ pipeline {
         expression { !params.TEARDOWN }
       }
       steps {
-        withCredentials([string(credentialsId: 'InfisicalClientID', variable: 'INFISICAL_CLIENT_ID'), string(credentialsId: 'InfisicalClientSecret', variable: 'INFISICAL_CLIENT_SECRET')]) {
-          script {
-            sh("""
-              # Install Infisical Operator for cluster secret management
-              ansible-playbook -i inventory.ini ./ansible/k8s-apps/infisical.yml
+        withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
+          infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'CERT_EMAIL']])])
+        {
+          withCredentials([
+            string(credentialsId: 'InfisicalClientID',
+            variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_ID'),
+            string(credentialsId: 'InfisicalClientSecret',
+            variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET')])
+          {
+            script {
+              sh("""
+                # Install Infisical Operator for cluster secret management
+                ansible-playbook -i inventory.ini ./ansible/k8s-apps/infisical.yml
 
-              chmod +x ./scripts/execute_ansible_folder.sh
-              ./scripts/execute_ansible_folder.sh ansible/k8s-apps
-            """)
+                chmod +x ./scripts/execute_ansible_folder.sh
+                ./scripts/execute_ansible_folder.sh ansible/k8s-apps
+              """)
+            }
           }
         }
       }
