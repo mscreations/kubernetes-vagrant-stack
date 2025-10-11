@@ -43,11 +43,11 @@ apiServer:
     - name: profiling
       value: "false"
     - name: encryption-provider-config
-      value: /etc/kubernetes/encryption-config.yml
+      value: /etc/kubernetes/encryption-config.yaml
   extraVolumes:
     - name: encryption-config
-      hostPath: /etc/kubernetes/encryption-config.yml
-      mountPath: /etc/kubernetes/encryption-config.yml
+      hostPath: /etc/kubernetes/encryption-config.yaml
+      mountPath: /etc/kubernetes/encryption-config.yaml
       readOnly: true
       pathType: File
 

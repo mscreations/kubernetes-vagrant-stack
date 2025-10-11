@@ -210,9 +210,9 @@ pipeline {
               chmod +x ./scripts/execute_ansible_folder.sh
               ./scripts/execute_ansible_folder.sh customize
 
-              ansible-galaxy install -r ./ansible/requirements.yml -p /etc/ansible/roles --force
+              ansible-galaxy install -r ./ansible/requirements.yaml -p /etc/ansible/roles --force
 
-              ansible-playbook -i inventory.ini ./ansible/stage1.yml
+              ansible-playbook -i inventory.ini ./ansible/stage1.yaml
             ''')
           }
         }
@@ -243,11 +243,11 @@ pipeline {
 
             sh("""
               ansible-playbook -i inventory.ini \
-                ./ansible/stage2_controlplane.yml \
+                ./ansible/stage2_controlplane.yaml \
                 --extra-vars='{
                   "controlplane_ips":[${control_ips_json}]
                 }'
-              ansible-playbook -i inventory.ini ./ansible/stage2_worker.yml
+              ansible-playbook -i inventory.ini ./ansible/stage2_worker.yaml
             """)
           }
         }
@@ -271,7 +271,7 @@ pipeline {
             script {
               sh("""
                 # Install Infisical Operator for cluster secret management
-                ansible-playbook -i inventory.ini ./ansible/k8s-apps/infisical.yml
+                ansible-playbook -i inventory.ini ./ansible/k8s-apps/infisical.yaml
 
                 chmod +x ./scripts/execute_ansible_folder.sh
                 ./scripts/execute_ansible_folder.sh ansible/k8s-apps
