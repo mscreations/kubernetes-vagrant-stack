@@ -29,5 +29,5 @@
             namespace: infisical
           type: Opaque
           data:
-            clientId: "{{ lookup('env', 'INFISICAL_CLIENT_ID') }}"
-            clientSecret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') }}"
+            clientId: "{{ lookup('env', 'INFISICAL_CLIENT_ID') | b64encode }}"
+            clientSecret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') | b64encode  }}"
