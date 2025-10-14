@@ -86,7 +86,8 @@ logs:
     format: "json"
     fields:
       headers:
-        X-Forwarded-For: "keep"
+        names:
+          X-Forwarded-For: "keep"
 service:
   annotations: {
     "metallb.io/address-pool": "traefik-lb-pool"
