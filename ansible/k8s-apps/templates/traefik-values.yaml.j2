@@ -1,0 +1,95 @@
+image:
+  registry: mirror.gcr.io
+ports:
+  web:
+    port: 8000
+    exposedPort: 80
+    redirections:
+      entryPoint:
+        to: websecure
+        scheme: https
+        permanent: true
+  websecure:
+    port: 8443
+    exposedPort: 443
+experimental:
+  plugins:
+    cloudflare:
+      moduleName: "github.com/danielbjornadal/traefik-cloudflare-plugin"
+      version: "v1.0.2"
+gateway:
+#  annotations: {
+#    "cert-manager.io/cluster-issuer": "letsencrypt-staging"
+#  }
+  listeners:
+    web:
+      port: 8000
+      hostname: ""
+      protocol: HTTP
+      namespacePolicy:
+        from: All
+    websecure:
+      port: 8443
+      hostname: ""
+      protocol: HTTPS
+      namespacePolicy:
+        from: All
+      certificateRefs:
+        - kind: Secret
+          name: traefik-wildcard-tls
+          namespace: traefik
+      mode: Terminate
+ingressRoute:
+  dashboard:
+    enabled: true
+    annotations:
+      gethomepage.dev/href: "https://traefik.{{ lookup('env', 'TRAEFIK_DOMAIN') }}"
+      gethomepage.dev/enabled: "true"
+      gethomepage.dev/description: "Reverse Proxy"
+      gethomepage.dev/group: "Network"
+      gethomepage.dev/icon: "traefik.png"
+      gethomepage.dev/name: "Traefik"
+      gethomepage.dev/widget.type: "traefik"
+      gethomepage.dev/widget.url: "https://traefik.{{ lookup('env', 'TRAEFIK_DOMAIN') }}"
+      gethomepage.dev/pod-selector: "app.kubernetes.io/name=traefik"
+    labels: {}
+    matchRule: Host(`traefik.{{ lookup('env', 'TRAEFIK_DOMAIN') }}`) || (Host(`traefik.{{ lookup('env', 'TRAEFIK_DOMAIN') }}`) && PathPrefix(`/dashboard`))
+    services:
+      - name: api@internal
+        kind: TraefikService
+    entryPoints: ["websecure"]
+    middlewares: []
+    tls:
+      secretName: traefik-dashboard-tls
+  healthcheck:
+    enabled: false
+    annotations: {}
+    labels: {}
+    matchRule: PathPrefix(`/ping`)
+    services:
+      - name: ping@internal
+        kind: TraefikService
+    entryPoints: ["traefik"]
+    middlewares: []
+    tls: {}
+providers:
+  kubernetesCRD:
+    enabled: true
+  kubernetesGateway:
+    enabled: true
+    namespaces: []
+logs:
+  general:
+    format: "json"
+  access:
+    enabled: true
+    format: "json"
+    fields:
+      headers:
+        X-Forwarded-For: "keep"
+service:
+  annotations: {
+    "metallb.io/address-pool": "traefik-lb-pool"
+  }
+  spec:
+    externalTrafficPolicy: Local
