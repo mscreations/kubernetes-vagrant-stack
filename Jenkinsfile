@@ -260,7 +260,7 @@ pipeline {
       }
       steps {
         withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
-          infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'CERT_EMAIL']])])
+        infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'CERT_EMAIL'],[infisicalKey: 'TRAEFIK_DOMAIN']])])
         {
           withCredentials([
             string(credentialsId: 'InfisicalClientID',
