@@ -2,6 +2,8 @@
 - name: Deploy Monitoring Stack
   hosts: controlplane[0]
   become: true
+  vars:
+    middleware_namespace: "kube-prometheus-stack"
 
   tasks:
     - name: Add metrics server Helm repo
@@ -47,22 +49,40 @@
         create_namespace: true
         state: present
         kubeconfig: /home/vagrant/.kube/config
-        # values:
-        #   grafana:
-        #     adminPassword: "admin"
-        #     service:
-        #       type: ClusterIP
-        #   prometheus-node-exporter:
-        #     hostRootFsMount: true
-        #   prometheus:
-        #     prometheusSpec:
-        #       serviceMonitorSelectorNilUsesHelmValues: false
-        #       ruleSelectorNilUsesHelmValues: false
-        #       retention: 10d
-        #       storageSpec:
-        #         volumeClaimTemplate:
-        #           spec:
-        #             accessModes: ["ReadWriteOnce"]
-        #             resources:
-        #               requests:
-        #                 storage: 20Gi
+        values:
+          grafana:
+            grafana.ini:
+              server:
+                domain: "metrics.{{ lookup('env', 'TRAEFIK_DOMAIN') }}"
+                root_url: "%(protocol)s://%(domain)s/grafana/"
+                serve_from_sub_path: true
+          prometheus:
+            prometheusSpec:
+              externalUrl: "https://metrics.{{ lookup('env', 'TRAEFIK_DOMAIN') }}/prometheus"
+              routePrefix: "/"
+
+    - name: Generate cloudflare middleware
+      ansible.builtin.template:
+        src: templates/cloudflare-middleware.yaml.j2
+        dest: /tmp/cloudflare-middleware.yaml
+        mode: '0644'
+      delegate_to: localhost
+      become: false
+
+    - name: Deploy cloudflare middleware
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('file', '/tmp/cloudflare-middleware.yaml') }}"
+
+    - name: Generate monitoring HTTPRoute manifest from template
+      ansible.builtin.template:
+        src: templates/monitoring-httproute.yaml.j2
+        dest: /tmp/monitoring-httproute.yaml
+        mode: '0644'
+      delegate_to: localhost
+      become: false
+
+    - name: Deploy monitoring HTTPRoute
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('file', '/tmp/monitoring-httproute.yaml') }}"
