@@ -61,28 +61,12 @@
               externalUrl: "https://metrics.{{ lookup('env', 'TRAEFIK_DOMAIN') }}/prometheus"
               routePrefix: "/"
 
-    - name: Generate cloudflare middleware
-      ansible.builtin.template:
-        src: templates/cloudflare-middleware.yaml.j2
-        dest: /tmp/cloudflare-middleware.yaml
-        mode: '0644'
-      delegate_to: localhost
-      become: false
-
     - name: Deploy cloudflare middleware
       kubernetes.core.k8s:
         state: present
-        definition: "{{ lookup('file', '/tmp/cloudflare-middleware.yaml') }}"
-
-    - name: Generate monitoring HTTPRoute manifest from template
-      ansible.builtin.template:
-        src: templates/monitoring-httproute.yaml.j2
-        dest: /tmp/monitoring-httproute.yaml
-        mode: '0644'
-      delegate_to: localhost
-      become: false
+        template: 'templates/namespace.yaml.j2'
 
     - name: Deploy monitoring HTTPRoute
       kubernetes.core.k8s:
         state: present
-        definition: "{{ lookup('file', '/tmp/monitoring-httproute.yaml') }}"
+        template: 'templates/monitoring-httproute.yaml.j2'

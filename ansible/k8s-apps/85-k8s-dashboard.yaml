@@ -66,28 +66,12 @@
               kubernetes.io/service-account.name: "admin-user"
           type: kubernetes.io/service-account-token
 
-    - name: Generate cloudflare middleware
-      ansible.builtin.template:
-        src: templates/cloudflare-middleware.yaml.j2
-        dest: /tmp/cloudflare-middleware.yaml
-        mode: '0644'
-      delegate_to: localhost
-      become: false
-
     - name: Deploy cloudflare middleware
       kubernetes.core.k8s:
         state: present
-        definition: "{{ lookup('file', '/tmp/cloudflare-middleware.yaml') }}"
-
-    - name: Generate K8S Dashboard ingressroute manifest
-      ansible.builtin.template:
-        src: templates/k8s-dashboard-ingressroute.yaml.j2
-        dest: /tmp/k8s-dashboard-ingressroute.yaml
-        mode: '0644'
-      delegate_to: localhost
-      become: false
+        template: 'templates/cloudflare-middleware.yaml.j2'
 
     - name: Apply K8S Dashboard ingressroute manifest
       kubernetes.core.k8s:
         state: present
-        definition: "{{ lookup('file', '/tmp/k8s-dashboard-ingressroute.yaml') }}"
+        template: 'templates/k8s-dashboard-ingressroute.yaml.j2'

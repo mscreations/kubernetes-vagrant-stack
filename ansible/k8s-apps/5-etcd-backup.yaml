@@ -7,18 +7,10 @@
     days_to_retain: 30
 
   tasks:
-    - name: Generate etcd backup manifest from template
-      ansible.builtin.template:
-        src: templates/etcd-backup-manifest.yaml.j2
-        dest: /tmp/etcd-backup-manifest.yaml
-        mode: '0644'
-      delegate_to: localhost
-      become: false
-
     - name: Deploy etcd backup cronjob
       kubernetes.core.k8s:
         state: present
-        definition: "{{ lookup('file', '/tmp/etcd-backup-manifest.yaml') }}"
+        template: 'templates/etcd-backup-manifest.yaml.j2'
       register: etcd_backup_deploy
       until: etcd_backup_deploy is succeeded
       retries: 5
