@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ app_name }}
+  namespace: {{ certificate_namespace }}
+spec:
+  secretName: "{{ app_name }}-tls"
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+  commonName: "{{ subdomain }}.{{ lookup('env', 'TRAEFIK_DOMAIN') }}"
+  dnsNames:
+    - "{{ subdomain }}.{{ lookup('env', 'TRAEFIK_DOMAIN') }}"

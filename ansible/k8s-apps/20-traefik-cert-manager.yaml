@@ -135,21 +135,11 @@
     - name: Deploy Traefik Dashboard TLS Certificate
       kubernetes.core.k8s:
         state: present
-        definition: |
-          ---
-          apiVersion: cert-manager.io/v1
-          kind: Certificate
-          metadata:
-            name: traefik-dashboard
-            namespace: traefik
-          spec:
-            secretName: traefik-dashboard-tls
-            issuerRef:
-              name: letsencrypt-staging
-              kind: ClusterIssuer
-            commonName: traefik.{{ lookup('env', 'TRAEFIK_DOMAIN') }}
-            dnsNames:
-              - traefik.{{ lookup('env', 'TRAEFIK_DOMAIN') }}
+        template: 'templates/certificate-request.yaml.j2'
+      vars:
+        app_name: traefik-dashboard
+        certificate_namespace: traefik
+        subdomain: traefik
 
     - name: Wait for cert-manager to issue the Traefik Wildcard TLS certificate
       kubernetes.core.k8s_info:
