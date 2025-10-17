@@ -64,7 +64,7 @@
     - name: Deploy cloudflare middleware
       kubernetes.core.k8s:
         state: present
-        template: 'templates/namespace.yaml.j2'
+        template: 'templates/cloudflare-middleware.yaml.j2'
 
     - name: Deploy monitoring HTTPRoute
       kubernetes.core.k8s:
