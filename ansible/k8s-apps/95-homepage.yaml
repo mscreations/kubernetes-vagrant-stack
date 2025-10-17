@@ -19,6 +19,13 @@
       ansible.builtin.set_fact:
         homepage_release: "{{ homepage_release_json.json.tag_name }}"
 
+    - name: Create homepage namespace
+      kubernetes.core.k8s:
+        state: present
+        apiVersion: v1
+        kind: Namespace
+        name: homepage
+
     - name: Deploy InfisicalSecret for homepage secrets
       kubernetes.core.k8s:
         state: present
