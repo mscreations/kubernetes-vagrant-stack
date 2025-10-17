@@ -43,8 +43,3 @@
         state: latest
         executable: pip3
         extra_args: --break-system-packages
-
-    - name: Install Helm diff plugin
-      kubernetes.core.helm_plugin:
-        plugin_path: https://github.com/databus23/helm-diff
-        state: present
