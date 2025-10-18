@@ -53,7 +53,7 @@ pipeline {
     stage('Generate Servers + Inventory') {
       agent { label 'linux' }
       steps {
-        sh('rm -rf customize')
+        sh('rm -rf *')
         unstash(name: 'SourceFiles')
         sh('chmod +x ./scripts/generate_servers.sh')
         script {
