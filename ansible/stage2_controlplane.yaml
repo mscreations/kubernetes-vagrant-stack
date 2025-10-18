@@ -204,6 +204,13 @@
         - { path: "/home/vagrant/.kube", owner: "vagrant", group: "vagrant" }
         - { path: "/root/.kube", owner: "root", group: "root" }
 
+    - name: Fetch admin.conf for artifacts
+      ansible.builtin.fetch:
+        src: /etc/kubernetes/admin.conf
+        dest: ./artifacts/admin.conf
+        flat: yes
+      when: mode == "init"
+
     - name: Add Calico Helm repo
       kubernetes.core.helm_repository:
         name: projectcalico
