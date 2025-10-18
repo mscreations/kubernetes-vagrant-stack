@@ -250,7 +250,7 @@ pipeline {
               ansible-playbook -i inventory.ini ./ansible/stage2_worker.yaml
             """)
 
-            archiveArtifacts(artifacts: 'artifacts/admin.conf', fingerprint: true)
+            archiveArtifacts(artifacts: 'ansible/artifacts/admin.conf', fingerprint: true)
           }
         }
       }
