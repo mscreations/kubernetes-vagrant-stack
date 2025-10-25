@@ -4,6 +4,10 @@
   become: true
 
   tasks:
+    - name: Set variables
+      ansible.builtin.set_fact:
+        new_ssh_password: "{{ lookup('env', 'NEW_SSH_PASSWORD') | default('') }}"
+
     - name: Check if vagrant password is still default
       ansible.builtin.expect:
         command: "su - vagrant -c 'id'"
@@ -20,6 +24,9 @@
         python3 -c "from passlib.hash import sha512_crypt; print(sha512_crypt.hash('{{ new_ssh_password }}'))"
       args:
         executable: /bin/bash
+      delegate_to: localhost
+      become: false
+      run_once: true
       register: password_hash_result
       when: new_ssh_password is defined and new_ssh_password != '' and su_result.rc == 0
 

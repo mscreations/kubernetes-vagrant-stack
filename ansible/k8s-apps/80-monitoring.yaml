@@ -1,0 +1,72 @@
+---
+- name: Deploy Monitoring Stack
+  hosts: controlplane[0]
+  become: true
+  vars:
+    middleware_namespace: "kube-prometheus-stack"
+
+  tasks:
+    - name: Add metrics server Helm repo
+      kubernetes.core.helm_repository:
+        name: metrics-server
+        repo_url: https://kubernetes-sigs.github.io/metrics-server/
+        kubeconfig: /home/vagrant/.kube/config
+
+    - name: Install metrics-server with Helm
+      kubernetes.core.helm:
+        name: metrics-server
+        chart_ref: metrics-server/metrics-server
+        namespace: kube-system
+        create_namespace: false
+        state: present
+        kubeconfig: /home/vagrant/.kube/config
+        values:
+          args:
+            - --kubelet-insecure-tls
+            - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+          service:
+            labels:
+              kubernetes.io/cluster-service: "true"
+              kubernetes.io/name: "Metrics-server"
+          updateStrategy:
+            type: RollingUpdate
+            rollingUpdate:
+              maxSurge: 0
+              maxUnavailable: 1
+          replicas: 2
+
+    - name: Add kube-prometheus-stack Helm repo
+      kubernetes.core.helm_repository:
+        name: prometheus-community
+        repo_url: https://prometheus-community.github.io/helm-charts
+        kubeconfig: /home/vagrant/.kube/config
+
+    - name: Install kube-prometheus-stack with Helm
+      kubernetes.core.helm:
+        name: kube-prometheus-stack
+        chart_ref: prometheus-community/kube-prometheus-stack
+        namespace: kube-prometheus-stack
+        create_namespace: true
+        state: present
+        kubeconfig: /home/vagrant/.kube/config
+        values:
+          grafana:
+            grafana.ini:
+              server:
+                domain: "metrics.{{ lookup('env', 'TRAEFIK_DOMAIN') }}"
+                root_url: "%(protocol)s://%(domain)s/grafana/"
+                serve_from_sub_path: true
+          prometheus:
+            prometheusSpec:
+              externalUrl: "https://metrics.{{ lookup('env', 'TRAEFIK_DOMAIN') }}/prometheus"
+              routePrefix: "/"
+
+    - name: Deploy cloudflare middleware
+      kubernetes.core.k8s:
+        state: present
+        template: 'templates/cloudflare-middleware.yaml.j2'
+
+    - name: Deploy monitoring HTTPRoute
+      kubernetes.core.k8s:
+        state: present
+        template: 'templates/monitoring-httproute.yaml.j2'

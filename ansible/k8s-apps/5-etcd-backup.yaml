@@ -1,0 +1,17 @@
+---
+- name: Backup etcd data
+  hosts: controlplane[0]
+  become: true
+  vars:
+    backup_dir: /mnt/k8s-data/backups
+    days_to_retain: 30
+
+  tasks:
+    - name: Deploy etcd backup cronjob
+      kubernetes.core.k8s:
+        state: present
+        template: 'templates/etcd-backup-manifest.yaml.j2'
+      register: etcd_backup_deploy
+      until: etcd_backup_deploy is succeeded
+      retries: 5
+      delay: 10

@@ -22,8 +22,6 @@ MODE = 5
 
 j = 0
 servers = Array.new
-controlplane_ips = Array.new
-worker_ips = Array.new
 (0..(CONTROLPLANE_NODES_COUNT - 1)).each do |i|
   if i == 0
     mode = "init"
@@ -31,12 +29,10 @@ worker_ips = Array.new
     mode = "controlplane"
   end
   servers.push(["kcp#{i+1}", CONTROLPLANE_MAX_MEMORY, CONTROLPLANE_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", mode])
-  controlplane_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
   j += 1
 end
 (0..(WORKER_NODES_COUNT - 1)).each do |i|
     servers.push(["kworker#{i+1}", WORKER_MAX_MEMORY, WORKER_MAX_CPUS, "00155d01020#{j}", "#{NETWORK_PREFIX}.20#{j + 1}", "worker"])
-    worker_ips.push("#{NETWORK_PREFIX}.20#{j + 1}")
     j += 1
 end
 
@@ -50,7 +46,6 @@ servers.each do |server|
 end
 
 Vagrant.configure("2") do |config|
-  config.vagrant.plugins = ['vagrant-reload']
   config.vm.box = VAGRANT_BOX
   config.vm.synced_folder ".", "/vagrant", mount_options: ["uid=1000", "gid=1000"], smb_username: ENV['DOMAIN_USER'], smb_password: ENV['DOMAIN_PASSWORD']
   config.vm.allow_fstab_modification = true

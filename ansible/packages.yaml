@@ -4,13 +4,12 @@
   become: true
   vars:
     packages:
-      - apt-transport-https 
-      - ca-certificates 
-      - curl 
-      - gnupg 
-      - lsb-release 
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
       - socat
-      - python3-passlib # Reset vagrant password
       - unzip   # For app installs
       # For AD
       - sssd-ad
@@ -19,7 +18,8 @@
       - adcli
       - neovim
       - python3-pip
-  
+      - nfs-common
+
   tasks:
     - name: Update all packages
       ansible.builtin.apt:

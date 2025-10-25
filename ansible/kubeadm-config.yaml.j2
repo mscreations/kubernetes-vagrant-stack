@@ -1,13 +1,19 @@
 ---
 {% if mode=="init" %}
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+
+metricsBindAddress: "0.0.0.0:10249"
+
+---
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: InitConfiguration
 
 bootstrapTokens:
-  - token: "{{ token }}"
+  - token: "{{ lookup('env', 'K8S_TOKEN') }}"
     ttl: "24h"
 
-certificateKey: "{{ certificate_key }}"
+certificateKey: "{{ lookup('env', 'K8S_CERTIFICATE_KEY') }}"
 
 localAPIEndpoint:
   advertiseAddress: "{{ ansible_default_ipv4.address }}"
@@ -17,10 +23,15 @@ localAPIEndpoint:
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
 
-kubernetesVersion: "latest"
+kubernetesVersion: >-
+  {% if lookup('env', 'K8S_VERSION') is match("^\d+\.\d+$") %}
+  stable-{{ lookup('env', 'K8S_VERSION') }}
+  {% else %}
+  v{{ lookup('env', 'K8S_VERSION') }}
+  {% endif %}
 
 {% if setup_lb %}
-controlPlaneEndpoint: "{{ network_prefix }}.200:443"
+controlPlaneEndpoint: "k8s-api.{{ ansible_facts.domain }}:443"
 {% endif %}
 
 networking:
@@ -32,11 +43,11 @@ apiServer:
     - name: profiling
       value: "false"
     - name: encryption-provider-config
-      value: /etc/kubernetes/encryption-config.yml
+      value: /etc/kubernetes/encryption-config.yaml
   extraVolumes:
     - name: encryption-config
-      hostPath: /etc/kubernetes/encryption-config.yml
-      mountPath: /etc/kubernetes/encryption-config.yml
+      hostPath: /etc/kubernetes/encryption-config.yaml
+      mountPath: /etc/kubernetes/encryption-config.yaml
       readOnly: true
       pathType: File
 
@@ -54,17 +65,23 @@ scheduler:
     - name: secure-port
       value: "10259"
 
+etcd:
+  local:
+    extraArgs:
+      - name: listen-metrics-urls
+        value: "http://0.0.0.0:2381"
+
 {% else %}
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: JoinConfiguration
 discovery:
   bootstrapToken:
-    apiServerEndpoint: "{{ network_prefix }}.200:443"
-    token: "{{ token }}"
+    apiServerEndpoint: "k8s-api.{{ ansible_facts.domain }}:443"
+    token: "{{ lookup('env', 'K8S_TOKEN') }}"
     unsafeSkipCAVerification: true
 
 controlPlane:
-  certificateKey: "{{ certificate_key }}"
+  certificateKey: "{{ lookup('env', 'K8S_CERTIFICATE_KEY') }}"
   localAPIEndpoint:
     advertiseAddress: "{{ ansible_default_ipv4.address }}"
     bindPort: 6443

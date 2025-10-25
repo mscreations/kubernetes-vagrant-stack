@@ -1,0 +1,60 @@
+---
+- name: Deploy Homepage Application
+  hosts: controlplane[0]
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Determine latest homepage version
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/gethomepage/homepage/releases/latest"
+        return_content: yes
+        headers:
+          Accept: "application/vnd.github.v3+json"
+      register: homepage_release_json
+      delegate_to: localhost
+      become: false
+
+    - name: Set homepage release version fact
+      ansible.builtin.set_fact:
+        homepage_release: "{{ homepage_release_json.json.tag_name }}"
+
+    - name: Create homepage namespace
+      kubernetes.core.k8s:
+        state: present
+        api_version: v1
+        kind: Namespace
+        name: homepage
+
+    - name: Deploy InfisicalSecret for homepage secrets
+      kubernetes.core.k8s:
+        state: present
+        definition: |
+          {% raw %}
+          apiVersion: secrets.infisical.com/v1alpha1
+          kind: InfisicalSecret
+          metadata:
+            name: homepage-secrets
+            namespace: homepage
+          spec:
+            authentication:
+              universalAuth:
+                secretsScope:
+                  projectSlug: "homelab-b-h-sw"
+                  envSlug: "prod"
+                  secretsPath: "/homepage"
+                credentialsRef:
+                  secretName: universal-auth-credentials
+                  secretNamespace: infisical
+            managedKubeSecretReferences:
+              - secretName: homepage-secrets
+                secretNamespace: homepage
+                creationPolicy: "Owner"
+                template:
+                  includeAllSecrets: true
+          {% endraw %}
+
+    - name: Deploy Homepage Application
+      kubernetes.core.k8s:
+        state: present
+        template: templates/homepage.yaml.j2

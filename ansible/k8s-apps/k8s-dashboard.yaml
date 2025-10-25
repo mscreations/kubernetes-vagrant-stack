@@ -1,0 +1,77 @@
+---
+- name: Deploy Kubernetes Dashboard
+  hosts: controlplane[0]
+  become: true
+  vars:
+    middleware_namespace: "kubernetes-dashboard"
+
+  tasks:
+    - name: Add K8S Dashboard Helm Repo
+      kubernetes.core.helm_repository:
+        name: kubernetes-dashboard
+        repo_url: https://kubernetes.github.io/dashboard/
+        state: present
+
+    - name: Install K8S Dashboard
+      kubernetes.core.helm:
+        name: kubernetes-dashboard
+        chart_ref: kubernetes-dashboard/kubernetes-dashboard
+        release_namespace: kubernetes-dashboard
+        create_namespace: true
+        values:
+          auth:
+            image:
+              repository: mirror.gcr.io/kubernetesui/dashboard-auth
+          api:
+            image:
+              repository: mirror.gcr.io/kubernetesui/dashboard-api
+          web:
+            image:
+              repository: mirror.gcr.io/kubernetesui/dashboard-web
+          metricsScraper:
+            image:
+              repository: mirror.gcr.io/kubernetesui/dashboard-metrics-scraper
+        state: present
+
+    - name: Create Admin User for K8S Dashboard
+      kubernetes.core.k8s:
+        state: present
+        definition: |
+          ---
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: admin-user
+            namespace: kubernetes-dashboard
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: admin-user
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cluster-admin
+          subjects:
+          - kind: ServiceAccount
+            name: admin-user
+            namespace: kubernetes-dashboard
+          ---
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: admin-user
+            namespace: kubernetes-dashboard
+            annotations:
+              kubernetes.io/service-account.name: "admin-user"
+          type: kubernetes.io/service-account-token
+
+    - name: Deploy cloudflare middleware
+      kubernetes.core.k8s:
+        state: present
+        template: 'templates/cloudflare-middleware.yaml.j2'
+
+    - name: Apply K8S Dashboard ingressroute manifest
+      kubernetes.core.k8s:
+        state: present
+        template: 'templates/k8s-dashboard-ingressroute.yaml.j2'

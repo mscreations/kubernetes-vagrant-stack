@@ -15,8 +15,8 @@
 
     - name: Join the worker node to the Kubernetes cluster
       ansible.builtin.shell: |
-        kubeadm join {{network_prefix}}.200:443 \
-          --token {{ token }} \
+        kubeadm join k8s-api.{{ ansible_facts.domain }}:443 \
+          --token {{ lookup('env', 'K8S_TOKEN') }} \
           --discovery-token-unsafe-skip-ca-verification
       register: join_cluster
       when: not kubelet_conf.stat.exists

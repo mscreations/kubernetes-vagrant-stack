@@ -1,0 +1,185 @@
+---
+- name: Deploy Traefik and cert-manager
+  hosts: controlplane[0]
+  become: true
+
+  tasks:
+    - name: Add Jetstack Helm repository
+      kubernetes.core.helm_repository:
+        name: cert-manager
+        repo_url: https://charts.jetstack.io
+        state: present
+
+    - name: Add Traefik Helm repository
+      kubernetes.core.helm_repository:
+        name: traefik
+        repo_url: https://helm.traefik.io/traefik
+        state: present
+
+    - name: Install Traefik CRDs (required for cert-manager)
+      kubernetes.core.helm:
+        name: traefik-crds
+        chart_ref: traefik/traefik-crds
+        namespace: traefik
+        create_namespace: true
+        state: present
+        values:
+          gatewayAPI: true
+
+    - name: Add kube-prometheus-stack Helm repo
+      kubernetes.core.helm_repository:
+        name: prometheus-community
+        repo_url: https://prometheus-community.github.io/helm-charts
+        kubeconfig: /home/vagrant/.kube/config
+
+    - name: Install prometheus CRDs (required for cert-manager)
+      kubernetes.core.helm:
+        name: prometheus-operator-crds
+        chart_ref: prometheus-community/prometheus-operator-crds
+        namespace: kube-prometheus-stack
+        create_namespace: true
+        state: present
+
+    - name: Install cert-manager Helm chart
+      kubernetes.core.helm:
+        name: cert-manager
+        chart_ref: cert-manager/cert-manager
+        namespace: cert-manager
+        create_namespace: true
+        values:
+          crds:
+            enabled: true
+          enableCertificateOwnerRef: false
+          config:
+            apiVersion: controller.config.cert-manager.io/v1alpha1
+            kind: ControllerConfiguration
+            enableGatewayAPI: true
+          dns01RecursiveNameservers: "1.1.1.1:53,1.0.0.1:53"
+          dns01RecursiveNameserversOnly: true
+          prometheus:
+            servicemonitor:
+              enabled: true
+              labels:
+                release: prometheus
+        state: present
+
+    - name: Deploy InfisicalSecret for cert-manager secrets
+      kubernetes.core.k8s:
+        state: present
+        definition: |
+          {% raw %}
+          apiVersion: secrets.infisical.com/v1alpha1
+          kind: InfisicalSecret
+          metadata:
+            name: cert-manager-secrets
+            namespace: cert-manager
+          spec:
+            authentication:
+              universalAuth:
+                secretsScope:
+                  projectSlug: "homelab-b-h-sw"
+                  envSlug: "prod"
+                  secretsPath: "/"
+                credentialsRef:
+                  secretName: universal-auth-credentials
+                  secretNamespace: infisical
+            managedKubeSecretReferences:
+              - secretName: cert-manager-secrets
+                secretNamespace: cert-manager
+                creationPolicy: "Owner"
+                template:
+                  data:
+                    CLOUDFLARE_TOKEN: "{{ .CLOUDFLARE_TOKEN.Value }}"
+          {% endraw %}
+
+    - name: Deploy cert-manager issuers
+      kubernetes.core.k8s:
+        state: present
+        template: 'templates/certissuer.yaml.j2'
+
+    - name: Deploy MetalLB AddressPool for Traefik
+      kubernetes.core.k8s:
+        state: present
+        definition: |
+          ---
+          apiVersion: metallb.io/v1beta1
+          kind: IPAddressPool
+          metadata:
+            name: traefik-lb-pool
+            namespace: metallb-system
+          spec:
+            addresses:
+            - 172.29.125.215-172.29.125.215
+            autoAssign: false
+          ---
+          apiVersion: metallb.io/v1beta1
+          kind: L2Advertisement
+          metadata:
+            name: traefik-l2
+            namespace: metallb-system
+
+    - name: Deploy Traefik Wildcard TLS Certificate
+      kubernetes.core.k8s:
+        state: present
+        definition: |
+          ---
+          apiVersion: cert-manager.io/v1
+          kind: Certificate
+          metadata:
+            name: traefik-wildcard
+            namespace: traefik
+          spec:
+            secretName: traefik-wildcard-tls
+            issuerRef:
+              name: letsencrypt-staging
+              kind: ClusterIssuer
+            commonName: {{ lookup('env', 'TRAEFIK_DOMAIN') }}
+            dnsNames:
+              - "{{ lookup('env', 'TRAEFIK_DOMAIN') }}"
+              - "*.{{ lookup('env', 'TRAEFIK_DOMAIN') }}"
+
+    - name: Deploy Traefik Dashboard TLS Certificate
+      kubernetes.core.k8s:
+        state: present
+        template: 'templates/certificate-request.yaml.j2'
+      vars:
+        app_name: traefik-dashboard
+        certificate_namespace: traefik
+        subdomain: traefik
+
+    - name: Wait for cert-manager to issue the Traefik Wildcard TLS certificate
+      kubernetes.core.k8s_info:
+        kind: Secret
+        namespace: traefik
+        name: traefik-wildcard-tls
+      register: traefik_cert_info
+      until: traefik_cert_info.resources | length > 0
+      retries: 90
+      delay: 15
+
+    - name: Wait for cert-manager to issue the Traefik Dashboard TLS certificate
+      kubernetes.core.k8s_info:
+        kind: Secret
+        namespace: traefik
+        name: traefik-dashboard-tls
+      register: traefik_cert_info
+      until: traefik_cert_info.resources | length > 0
+      retries: 90
+      delay: 15
+
+    - name: Create Traefik values file from template
+      ansible.builtin.template:
+        src: templates/traefik-values.yaml.j2
+        dest: /tmp/traefik-values.yaml
+        mode: '0644'
+      delegate_to: localhost
+      become: false
+
+    - name: Install Traefik Helm chart
+      kubernetes.core.helm:
+        name: traefik
+        chart_ref: traefik/traefik
+        namespace: traefik
+        create_namespace: false
+        values: "{{ lookup('file', '/tmp/traefik-values.yaml') | from_yaml }}"
+        state: present
