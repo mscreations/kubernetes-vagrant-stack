@@ -2,7 +2,13 @@
 - name: Install containerd
   hosts: all
   become: true
+
   roles:
     - role: geerlingguy.containerd
-      vars:
-        containerd_config_cgroup_driver_systemd: true
+
+  tasks:
+    - name: Setup SystemdCgroup flag properly for containerd
+      ansible.builtin.replace:
+        path: /etc/containerd/config.toml
+        regexp: '^\s*SystemdCgroup\s*=\s*false'
+        replace: 'SystemdCgroup = true'
