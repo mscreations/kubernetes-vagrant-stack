@@ -7,8 +7,15 @@
     - role: geerlingguy.containerd
 
   tasks:
-    - name: Setup SystemdCgroup flag properly for containerd
+    - name: Setup SystemdCgroup flag for containerd
       ansible.builtin.replace:
         path: /etc/containerd/config.toml
         regexp: '^\s*SystemdCgroup\s*=\s*false'
         replace: 'SystemdCgroup = true'
+      notify: Restart containerd
+
+  handlers:
+    - name: Restart containerd
+      ansible.builtin.service:
+        name: containerd
+        state: restarted
