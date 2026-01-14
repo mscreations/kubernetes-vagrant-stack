@@ -16,7 +16,7 @@ pipeline {
     pollSCM('*/2 * * * *')
   }
   parameters {
-    string(defaultValue: '1.34', name: 'K8S_VERSION', trim: true)
+    string(defaultValue: '1.35', name: 'K8S_VERSION', trim: true)
     booleanParam(name: 'TEARDOWN')
     string(name: 'VAGRANT_EXTRA_ARGS', trim: true)
     booleanParam(name: 'UPDATE_BOX')
