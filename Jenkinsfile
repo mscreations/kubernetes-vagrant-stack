@@ -255,7 +255,7 @@ pipeline {
         }
       }
     }
-    stage('Deploy k8s Apps') {
+    stage('Deploy Secrets Manager + Core Apps') {
       agent { label 'linux' }
       when {
         expression { !params.TEARDOWN }
@@ -281,6 +281,29 @@ pipeline {
             }
           }
         }
+      }
+    }
+    stage('Deploy Apps to ArgoCD') {
+      agent { label 'linux' }
+      when {
+        expression { !params.TEARDOWN }
+      }
+      steps {
+        script {
+          dir('cluster-apps') {
+            git(
+              url: 'git@github.com:mscreations/cluster-apps.git',
+              branch: 'master',
+              credentialsId: 'Github'
+            )
+          }
+
+          sh("""
+            ansible-playbook -i inventory.ini ./ansible/argocd.yaml
+          """)
+        }
+
+      }
       }
     }
     stage('Ensure Pull Request') {
