@@ -50,6 +50,9 @@
               ssl: true
           cephObjectStores: null
           cephBlockPools: null
+          cephFileSystems:
+            storageClass:
+              isDefault: true
           monitoring:
             enabled: true
         state: present
