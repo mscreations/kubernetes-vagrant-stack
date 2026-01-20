@@ -51,8 +51,9 @@
           cephObjectStores: null
           cephBlockPools: null
           cephFileSystems:
-            storageClass:
-              isDefault: true
+            - name: ceph-filesystem
+              storageClass:
+                isDefault: true
           monitoring:
             enabled: true
         state: present
