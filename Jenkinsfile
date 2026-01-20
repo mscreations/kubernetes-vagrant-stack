@@ -294,7 +294,9 @@ pipeline {
             git(
               url: 'git@github.com:mscreations/cluster-apps.git',
               branch: 'master',
-              credentialsId: 'Github'
+              credentialsId: 'Github',
+              changelog: false,
+              poll: false
             )
           }
 
