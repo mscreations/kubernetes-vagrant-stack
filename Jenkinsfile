@@ -302,8 +302,6 @@ pipeline {
             ansible-playbook -i inventory.ini ./ansible/argocd.yaml
           """)
         }
-
-      }
       }
     }
     stage('Ensure Pull Request') {
