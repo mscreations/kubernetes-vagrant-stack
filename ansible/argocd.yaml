@@ -10,7 +10,7 @@
 
     - name: Copy values.yaml to remote
       ansible.builtin.copy:
-        src: ./cluster-apps/bootstrap/argocd/values.yaml
+        src: ../cluster-apps/bootstrap/argocd/values.yaml
         dest: /tmp/argocd-values.yaml
         mode: '0644'
 
@@ -27,9 +27,9 @@
     - name: Install Repo Secret
       kubernetes.core.k8s:
         state: present
-        src: ./cluster-apps/bootstrap/repo-secret.yaml
+        src: ../cluster-apps/bootstrap/repo-secret.yaml
 
     - name: Install ApplicationSet
       kubernetes.core.k8s:
         state: present
-        src: ./cluster-apps/bootstrap/applicationset.yaml
+        src: ../cluster-apps/bootstrap/applicationset.yaml
