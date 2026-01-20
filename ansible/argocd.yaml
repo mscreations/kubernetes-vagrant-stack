@@ -10,8 +10,8 @@
 
     - name: Copy values.yaml to remote
       ansible.builtin.copy:
-        src: {{ item.local }}
-        dest: {{ item.remote }}
+        src: "{{ item.local }}"
+        dest: "{{ item.remote }}"
         mode: '0644'
       with_items:
         - { local: '../cluster-apps/bootstrap/argocd/values.yaml', remote: '/tmp/argocd-values.yaml' }
