@@ -18,6 +18,7 @@
       yh: "https://api.github.com/repos/andreazorzetto/yh/releases/latest"
       etcdutl: "https://api.github.com/repos/etcd-io/etcd/releases/latest"
       argocd: "https://api.github.com/repos/argoproj/argo-cd/releases/latest"
+      regctl: "https://api.github.com/repos/regclient/regclient/releases/latest"
 
   tasks:
     ######################################################################
@@ -211,3 +212,11 @@
         plugin_path: https://github.com/databus23/helm-diff
         state: present
 
+    ######################################################################
+    # Install regctl
+    ######################################################################
+    - name: Install latest regctl
+      ansible.builtin.get_url:
+        url: "https://github.com/regclient/regclient/releases/download/{{ latest_versions.regclient }}/regctl_linux_amd64"
+        dest: "{{ bin_dir }}/regctl"
+        mode: '0755'
