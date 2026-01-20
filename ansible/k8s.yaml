@@ -84,19 +84,27 @@
         - { path: '/root/.zshrc', owner: 'root', group: 'root' }
         - { path: '/etc/skel/.zshrc', owner: 'root', group: 'root' }
 
-    - name: Create k8s persistent volume mount directory
+    - name: Create k8s persistent volume mount directories
       ansible.builtin.file:
-        path: /mnt/k8s-data
+        path: "/mnt/{{ item }}"
         state: directory
         mode: '0755'
+      loop:
+      - k8s-data
+      - torrents
+      - media
       ignore_errors: true
 
-    - name: Add k8s data mount
+    - name: Add k8s data mounts
       ansible.posix.mount:
-        name: /mnt/k8s-data
-        src: "winserver.{{ domain }}:/k8s-data"
+        name: "/mnt/{{ item }}"
+        src: "winserver.{{ domain }}:/{{ item }}"
         fstype: nfs4
         opts: "sec=sys,vers=4.1,_netdev"
         state: mounted
         dump: 0
         passno: 0
+      loop:
+      - k8s-data
+      - torrents
+      - media
