@@ -14,7 +14,7 @@
         chart_ref: argo/argo-cd
         namespace: argocd
         create_namespace: true
-        valuesfiles:
+        values_files:
           - ./cluster-apps/bootstrap/argocd/values.yaml
         state: present
 
