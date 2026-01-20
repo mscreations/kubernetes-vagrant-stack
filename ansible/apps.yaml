@@ -17,6 +17,7 @@
       arkade: "https://api.github.com/repos/alexellis/arkade/releases/latest"
       yh: "https://api.github.com/repos/andreazorzetto/yh/releases/latest"
       etcdutl: "https://api.github.com/repos/etcd-io/etcd/releases/latest"
+      argocd: "https://api.github.com/repos/argoproj/argo-cd/releases/latest"
 
   tasks:
     ######################################################################
@@ -181,6 +182,16 @@
         remote_src: true
         mode: '0755'
         creates: "{{ bin_dir }}/yh"
+
+    ######################################################################
+    # Install argocd
+    ######################################################################
+    - name: Install latest argocd
+      ansible.builtin.get_url:
+        url: "https://github.com/argoproj/argo-cd/releases/download/{{ latest_versions.arkade }}/argocd-linux-amd64"
+        dest: "{{ bin_dir }}/argocd"
+        mode: '0755'
+
 
     ######################################################################
     # Install etcdutl
