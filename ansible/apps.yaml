@@ -217,6 +217,6 @@
     ######################################################################
     - name: Install latest regctl
       ansible.builtin.get_url:
-        url: "https://github.com/regclient/regclient/releases/download/{{ latest_versions.regctl }}/regctl_linux_amd64"
+        url: "https://github.com/regclient/regclient/releases/download/{{ latest_versions.regctl }}/regctl-linux-amd64"
         dest: "{{ bin_dir }}/regctl"
         mode: '0755'
