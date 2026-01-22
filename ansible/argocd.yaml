@@ -14,8 +14,9 @@
         dest: "{{ item.remote }}"
         mode: '0644'
       with_items:
-        - { local: '../cluster-apps/bootstrap/argocd/values.yaml', remote: '/tmp/argocd-values.yaml' }
+        - { local: '../cluster-apps/bootstrap/argocd-values.yaml', remote: '/tmp/argocd-values.yaml' }
         - { local: '../cluster-apps/bootstrap/repo-secret.yaml', remote: '/tmp/repo-secret.yaml' }
+        - { local: '../cluster-apps/bootstrap/projects.yaml', remote: '/tmp/projects.yaml' }
         - { local: '../cluster-apps/bootstrap/applicationset.yaml', remote: '/tmp/applicationset.yaml' }
 
     - name: Install ArgoCD
@@ -32,6 +33,11 @@
       kubernetes.core.k8s:
         state: present
         src: /tmp/repo-secret.yaml
+
+    - name: Install Projects
+      kubernetes.core.k8s:
+        state: present
+        src: /tmp/projects.yaml
 
     - name: Install ApplicationSet
       kubernetes.core.k8s:
