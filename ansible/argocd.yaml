@@ -3,31 +3,23 @@
   become: true
 
   tasks:
-    - name: Add ArgoCD Helm Repo
-      kubernetes.core.helm_repository:
-        name: argo
-        repo_url: https://argoproj.github.io/argo-helm
-
-    - name: Copy values.yaml to remote
+    - name: Copy files to control plane for deployment
       ansible.builtin.copy:
         src: "{{ item.local }}"
         dest: "{{ item.remote }}"
         mode: '0644'
-      with_items:
-        - { local: '../cluster-apps/bootstrap/argocd-values.yaml', remote: '/tmp/argocd-values.yaml' }
+      loop:
+        - { local: '../cluster-apps/apps/system/argocd', remote: '/tmp/argocd' }
         - { local: '../cluster-apps/bootstrap/repo-secret.yaml', remote: '/tmp/repo-secret.yaml' }
         - { local: '../cluster-apps/bootstrap/projects.yaml', remote: '/tmp/projects.yaml' }
         - { local: '../cluster-apps/bootstrap/applicationset.yaml', remote: '/tmp/applicationset.yaml' }
 
     - name: Install ArgoCD
-      kubernetes.core.helm:
-        name: argocd
-        chart_ref: argo/argo-cd
-        namespace: argocd
-        create_namespace: true
-        values_files:
-          - /tmp/argocd-values.yaml
-        state: present
+      kubernetes.core.k8s:
+        definition: "{{ lookup('kubernetes.core.kustomize', dir='/tmp/argocd') }}"
+        server_side_apply:
+          field_manager: ansible
+          force_conflicts: true
 
     - name: Install Repo Secret
       kubernetes.core.k8s:
