@@ -9,17 +9,37 @@
         dest: "{{ item.remote }}"
         mode: '0644'
       loop:
-        - { local: '../cluster-apps/apps/system/argocd', remote: '/tmp/argocd' }
         - { local: '../cluster-apps/bootstrap/repo-secret.yaml', remote: '/tmp/repo-secret.yaml' }
         - { local: '../cluster-apps/bootstrap/projects.yaml', remote: '/tmp/projects.yaml' }
         - { local: '../cluster-apps/bootstrap/applicationset.yaml', remote: '/tmp/applicationset.yaml' }
 
     - name: Install ArgoCD
       kubernetes.core.k8s:
-        definition: "{{ lookup('kubernetes.core.kustomize', dir='../cluster-apps/apps/system/argocd', binary_path='/usr/bin/kubectl') }}"
+        definition: "{{ lookup('kubernetes.core.kustomize', dir='./cluster-apps/apps/system/argocd', binary_path='/usr/bin/kubectl') }}"
         server_side_apply:
           field_manager: ansible
           force_conflicts: true
+
+    - name: Wait for all ArgoCD deployments to be ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        namespace: argocd
+      register: argocd_deployments
+      until: >
+        argocd_deployments.resources | length > 0 and
+        (
+          argocd_deployments.resources
+          | map(attribute='status.availableReplicas')
+          | map('default', 0)
+          | list
+          ==
+          argocd_deployments.resources
+          | map(attribute='spec.replicas')
+          | list
+        )
+      retries: 30
+      delay: 10
 
     - name: Install Repo Secret
       kubernetes.core.k8s:
