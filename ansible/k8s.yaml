@@ -89,6 +89,7 @@
         path: "/mnt/{{ item }}"
         state: directory
         mode: '0755'
+        attributes: '+i'
       loop:
       - k8s-data
       - torrents
