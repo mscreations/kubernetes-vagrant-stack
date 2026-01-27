@@ -47,7 +47,7 @@
                   enabled: true
             dashboard:
               enabled: true
-              ssl: true
+              ssl: false
           cephObjectStores: null
           cephBlockPools: null
           cephFileSystems:
@@ -75,7 +75,7 @@
               enabled: true
               isDefault: true
               name: ceph-filesystem
-              reclaimPolicy: Delete
+              reclaimPolicy: Retain
               allowVolumeExpansion: true
               volumeBindingMode: "Immediate"
               annotations: {}
