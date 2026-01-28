@@ -1,17 +1,57 @@
-- name: Install ArgoCD
+---
+- name: Deploy ArgoCD and required secrets
   hosts: controlplane[0]
   become: true
 
   tasks:
-    - name: Copy files to control plane for deployment
-      ansible.builtin.copy:
-        src: "{{ item.local }}"
-        dest: "{{ item.remote }}"
-        mode: '0644'
-      loop:
-        - { local: '../cluster-apps/bootstrap/repo-secret.yaml', remote: '/tmp/repo-secret.yaml' }
-        - { local: '../cluster-apps/bootstrap/projects.yaml', remote: '/tmp/projects.yaml' }
-        - { local: '../cluster-apps/bootstrap/applicationset.yaml', remote: '/tmp/applicationset.yaml' }
+    - name: Create Infisical namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: infisical
+
+    - name: Create Infisical secret with client credentials
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: universal-auth-credentials
+            namespace: infisical
+          type: Opaque
+          data:
+            clientId: "{{ lookup('env', 'INFISICAL_UNIVERSAL_AUTH_CLIENT_ID') | b64encode }}"
+            clientSecret: "{{ lookup('env', 'INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET') | b64encode }}"
+
+    - name: Create ArgoCD namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: argocd
+
+    - name: Create ArgoCD Git repo_url
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: github-repo
+            namespace: argocd
+            labels:
+              argocd.argoproj.io/secret-type: repository
+          type: Opaque
+          stringData:
+            sshPrivateKey: "{{ lookup('env', 'sshPrivateKey') }}"
+            type: "git"
+            url: "git@github.com:mscreations/cluster-apps.git"
 
     - name: Install ArgoCD
       kubernetes.core.k8s:
@@ -41,17 +81,12 @@
       retries: 30
       delay: 10
 
-    - name: Install Repo Secret
-      kubernetes.core.k8s:
-        state: present
-        src: /tmp/repo-secret.yaml
-
     - name: Install Projects
       kubernetes.core.k8s:
         state: present
-        src: /tmp/projects.yaml
+        definition: "{{ lookup('file', './cluster-apps/bootstrap/projects.yaml') | from_yaml_all }}"
 
-    - name: Install ApplicationSet
+    - name: Install Infra ApplicationSet
       kubernetes.core.k8s:
         state: present
-        src: /tmp/applicationset.yaml
+        definition: "{{ lookup('file', './cluster-apps/bootstrap/infra-applicationset.yaml') | from_yaml_all }}"

@@ -266,6 +266,32 @@ pipeline {
         }
       }
     }
+    stage('Deploy ArgoCD and required secrets for Infisical Access') {
+      agent { label 'linux' }
+      when {
+        expression { !params.TEARDOWN }
+      }
+      steps {
+        withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
+        infisicalSecrets: [infisicalSecret(includeImports: true, path: '/argocd', secretValues: [[infisicalKey: 'sshPrivateKey'],[infisicalKey: 'TRAEFIK_DOMAIN']])])
+        {
+          withCredentials([
+            string(credentialsId: 'InfisicalClientID',
+            variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_ID'),
+            string(credentialsId: 'InfisicalClientSecret',
+            variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET')
+          ])
+          {
+            script {
+              sh("""
+                ansible-playbook -i inventory.ini \
+                  ./ansible/argocd.yaml
+              """)
+            }
+          }
+        }
+      }
+    }
     // Disable rest of pipeline for conversion to ArgoCD deployment
 
     // stage('Deploy Secrets Manager + Core Apps') {
