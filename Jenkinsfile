@@ -228,6 +228,17 @@ pipeline {
           infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])])
         {
           script {
+            // Temporary for ArgoCD migration
+            dir('cluster-apps') {
+              git(
+                url: 'git@github.com:mscreations/cluster-apps.git',
+                branch: 'master',
+                credentialsId: 'Github',
+                changelog: false,
+                poll: false
+              )
+            }
+            // End temp section
             def servers = readFile('servers.txt').trim().split("\\r?\\n")
 
             def control_ips = servers.collect { line ->
@@ -255,86 +266,88 @@ pipeline {
         }
       }
     }
-    stage('Deploy Secrets Manager + Core Apps') {
-      agent { label 'linux' }
-      when {
-        expression { !params.TEARDOWN }
-      }
-      steps {
-        withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
-        infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'CERT_EMAIL'],[infisicalKey: 'TRAEFIK_DOMAIN']])])
-        {
-          withCredentials([
-            string(credentialsId: 'InfisicalClientID',
-            variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_ID'),
-            string(credentialsId: 'InfisicalClientSecret',
-            variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET')])
-          {
-            script {
-              sh("""
-                # Install Infisical Operator for cluster secret management
-                ansible-playbook -i inventory.ini ./ansible/k8s-apps/infisical.yaml
+    // Disable rest of pipeline for conversion to ArgoCD deployment
 
-                chmod +x ./scripts/execute_ansible_folder.sh
-                ./scripts/execute_ansible_folder.sh ansible/k8s-apps
-              """)
-            }
-          }
-        }
-      }
-    }
-    stage('Deploy Apps to ArgoCD') {
-      agent { label 'linux' }
-      when {
-        expression { !params.TEARDOWN }
-      }
-      steps {
-        script {
-          dir('cluster-apps') {
-            git(
-              url: 'git@github.com:mscreations/cluster-apps.git',
-              branch: 'master',
-              credentialsId: 'Github',
-              changelog: false,
-              poll: false
-            )
-          }
+    // stage('Deploy Secrets Manager + Core Apps') {
+    //   agent { label 'linux' }
+    //   when {
+    //     expression { !params.TEARDOWN }
+    //   }
+    //   steps {
+    //     withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
+    //     infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'CERT_EMAIL'],[infisicalKey: 'TRAEFIK_DOMAIN']])])
+    //     {
+    //       withCredentials([
+    //         string(credentialsId: 'InfisicalClientID',
+    //         variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_ID'),
+    //         string(credentialsId: 'InfisicalClientSecret',
+    //         variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET')])
+    //       {
+    //         script {
+    //           sh("""
+    //             # Install Infisical Operator for cluster secret management
+    //             ansible-playbook -i inventory.ini ./ansible/k8s-apps/infisical.yaml
 
-          sh("""
-            ansible-playbook -i inventory.ini ./ansible/argocd.yaml
-          """)
-        }
-      }
-    }
-    stage('Ensure Pull Request') {
-      agent { label 'linux' }
-      when {
-        allOf {
-          changeset "**/*"
-          expression { !params.TEARDOWN }
-        }
-      }
-      steps {
-        withCredentials([string(credentialsId: 'GithubToken', variable: 'GITHUB_TOKEN')]) {
-          sh '''
-            set -e
+    //             chmod +x ./scripts/execute_ansible_folder.sh
+    //             ./scripts/execute_ansible_folder.sh ansible/k8s-apps
+    //           """)
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
+    // stage('Deploy Apps to ArgoCD') {
+    //   agent { label 'linux' }
+    //   when {
+    //     expression { !params.TEARDOWN }
+    //   }
+    //   steps {
+    //     script {
+    //       dir('cluster-apps') {
+    //         git(
+    //           url: 'git@github.com:mscreations/cluster-apps.git',
+    //           branch: 'master',
+    //           credentialsId: 'Github',
+    //           changelog: false,
+    //           poll: false
+    //         )
+    //       }
 
-            existing_pr=$(gh pr list --base main --head dev --json number --jq '.[0].number')
+    //       sh("""
+    //         ansible-playbook -i inventory.ini ./ansible/argocd.yaml
+    //       """)
+    //     }
+    //   }
+    // }
+    // stage('Ensure Pull Request') {
+    //   agent { label 'linux' }
+    //   when {
+    //     allOf {
+    //       changeset "**/*"
+    //       expression { !params.TEARDOWN }
+    //     }
+    //   }
+    //   steps {
+    //     withCredentials([string(credentialsId: 'GithubToken', variable: 'GITHUB_TOKEN')]) {
+    //       sh '''
+    //         set -e
 
-            if [ -n "$existing_pr" ]; then
-              echo "PR #$existing_pr exists. Commenting..."
-              gh pr comment $existing_pr --body "✅ Jenkins build #$BUILD_NUMBER succeeded for commit $(git rev-parse --short HEAD)"
-            else
-              echo "No PR found. Creating a new one..."
-              gh pr create \
-                --base main \
-                --head dev \
-                --title "Promote dev to main" \
-                --body "Automated PR created by Jenkins after successful build #$BUILD_NUMBER"
-            fi
-          '''
-        }
-      }
-    }
+    //         existing_pr=$(gh pr list --base main --head dev --json number --jq '.[0].number')
+
+    //         if [ -n "$existing_pr" ]; then
+    //           echo "PR #$existing_pr exists. Commenting..."
+    //           gh pr comment $existing_pr --body "✅ Jenkins build #$BUILD_NUMBER succeeded for commit $(git rev-parse --short HEAD)"
+    //         else
+    //           echo "No PR found. Creating a new one..."
+    //           gh pr create \
+    //             --base main \
+    //             --head dev \
+    //             --title "Promote dev to main" \
+    //             --body "Automated PR created by Jenkins after successful build #$BUILD_NUMBER"
+    //         fi
+    //       '''
+    //     }
+    //   }
+    // }
   }
 }

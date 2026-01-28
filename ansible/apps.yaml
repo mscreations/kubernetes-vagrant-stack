@@ -71,8 +71,8 @@
     ######################################################################
     - name: Install latest helm
       ansible.builtin.unarchive:
-        # src: "https://get.helm.sh/helm-{{ latest_versions.helm }}-linux-amd64.tar.gz"
-        src: "https://get.helm.sh/helm-v3.19.4-linux-amd64.tar.gz"
+        src: "https://get.helm.sh/helm-{{ latest_versions.helm }}-linux-amd64.tar.gz"
+        # src: "https://get.helm.sh/helm-v3.19.4-linux-amd64.tar.gz"
         dest: "{{ bin_dir }}"
         include: ["linux-amd64/helm"]
         extra_opts: ["--strip-components=1"]

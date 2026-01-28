@@ -227,19 +227,19 @@
         kubeconfig: /home/vagrant/.kube/config
       when: mode == "init"
 
-    - name: Install Calico with default Helm values
-      kubernetes.core.helm:
-        name: calico
-        chart_ref: projectcalico/tigera-operator
-        namespace: tigera-operator
-        state: present
-        kubeconfig: /home/vagrant/.kube/config
-        values:
-          installation:
-            registry: mirror.gcr.io
-          calicoctl:
-            image: mirror.gcr.io/calico/ctl
-      when: mode == "init"
+    # - name: Install Calico with default Helm values
+    #   kubernetes.core.helm:
+    #     name: calico
+    #     chart_ref: projectcalico/tigera-operator
+    #     namespace: tigera-operator
+    #     state: present
+    #     kubeconfig: /home/vagrant/.kube/config
+    #     values:
+    #       installation:
+    #         registry: mirror.gcr.io
+    #       calicoctl:
+    #         image: mirror.gcr.io/calico/ctl
+    #   when: mode == "init"
 
     - name: Create user init script
       ansible.builtin.copy:
