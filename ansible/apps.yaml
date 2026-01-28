@@ -207,10 +207,10 @@
         mode: '0755'
         creates: "{{ bin_dir }}/etcdutl"
 
-    - name: Install Helm diff plugin
-      kubernetes.core.helm_plugin:
-        plugin_path: https://github.com/databus23/helm-diff
-        state: present
+    # - name: Install Helm diff plugin
+    #   kubernetes.core.helm_plugin:
+    #     plugin_path: https://github.com/databus23/helm-diff
+    #     state: present
 
     ######################################################################
     # Install regctl
