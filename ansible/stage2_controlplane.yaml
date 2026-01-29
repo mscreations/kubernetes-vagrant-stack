@@ -233,6 +233,7 @@
         argv:
           - /usr/local/bin/helm
           - upgrade
+          - --install
           - --namespace
           - tigera-operator
           - --create-namespace
