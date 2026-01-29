@@ -55,7 +55,7 @@
 
     - name: Install ArgoCD
       kubernetes.core.k8s:
-        definition: "{{ lookup('kubernetes.core.kustomize', dir='./cluster-apps/apps/system/argocd', binary_path='/usr/bin/kubectl') }}"
+        definition: "{{ lookup('kubernetes.core.kustomize', dir='./cluster-apps/apps/infra/argocd', binary_path='/usr/bin/kubectl') }}"
         server_side_apply:
           field_manager: ansible
           force_conflicts: true
