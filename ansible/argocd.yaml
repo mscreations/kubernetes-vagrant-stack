@@ -84,9 +84,9 @@
     - name: Install Projects
       kubernetes.core.k8s:
         state: present
-        definition: "{{ lookup('file', './cluster-apps/bootstrap/projects.yaml') | from_yaml_all }}"
+        definition: "{{ lookup('file', '../cluster-apps/bootstrap/projects.yaml') | from_yaml_all }}"
 
     - name: Install Infra ApplicationSet
       kubernetes.core.k8s:
         state: present
-        definition: "{{ lookup('file', './cluster-apps/bootstrap/infra-applicationset.yaml') | from_yaml_all }}"
+        definition: "{{ lookup('file', '../cluster-apps/bootstrap/infra-applicationset.yaml') | from_yaml_all }}"
