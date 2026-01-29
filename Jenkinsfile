@@ -12,9 +12,6 @@ pipeline {
     VAGRANT_INSTALL_LOCAL_PLUGINS=1
     ANSIBLE_FORCE_COLOR = 1
   }
-  triggers {
-    pollSCM('*/2 * * * *')
-  }
   parameters {
     string(defaultValue: '1.35', name: 'K8S_VERSION', trim: true)
     booleanParam(name: 'TEARDOWN')
