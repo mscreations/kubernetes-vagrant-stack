@@ -17,8 +17,9 @@
       arkade: "https://api.github.com/repos/alexellis/arkade/releases/latest"
       yh: "https://api.github.com/repos/andreazorzetto/yh/releases/latest"
       etcdutl: "https://api.github.com/repos/etcd-io/etcd/releases/latest"
-      argocd: "https://api.github.com/repos/argoproj/argo-cd/releases/latest"
+      flux: "https://api.github.com/repos/fluxcd/flux2/releases/latest"
       regctl: "https://api.github.com/repos/regclient/regclient/releases/latest"
+      kustomize: "https://api.github.com/repos/kubernetes-sigs/kustomize/releases/latest"
 
   tasks:
     ######################################################################
@@ -185,14 +186,26 @@
         creates: "{{ bin_dir }}/yh"
 
     ######################################################################
-    # Install argocd
+    # Install flux
     ######################################################################
-    - name: Install latest argocd
-      ansible.builtin.get_url:
-        url: "https://github.com/argoproj/argo-cd/releases/download/{{ latest_versions.argocd }}/argocd-linux-amd64"
-        dest: "{{ bin_dir }}/argocd"
+    - name: Install latest flux
+      ansible.builtin.unarchive:
+        src: "https://github.com/fluxcd/flux2/releases/download/{{ latest_versions.flux }}/flux_{{ latest_versions.flux | regex_replace('^v','') }}_linux_amd64.tar.gz"
+        dest: "{{ bin_dir }}"
+        remote_src: true
         mode: '0755'
+        creates: "{{ bin_dir }}/flux"
 
+    ######################################################################
+    # Install kustomize
+    ######################################################################
+    - name: Install latest kustomize
+      ansible.builtin.unarchive:
+        src: "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/{{ latest_versions.kustomize }}/kustomize_{{ latest_versions.kustomize }}_linux_amd64.tar.gz"
+        dest: "{{ bin_dir }}"
+        remote_src: true
+        mode: '0755'
+        creates: "{{ bin_dir }}/kustomize"
 
     ######################################################################
     # Install etcdutl
