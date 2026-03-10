@@ -228,7 +228,7 @@ pipeline {
             dir('flux-apps') {
               git(
                 url: 'git@github.com:mscreations/flux-apps.git',
-                branch: 'master',
+                branch: 'main',
                 credentialsId: 'Github',
                 changelog: false,
                 poll: false
