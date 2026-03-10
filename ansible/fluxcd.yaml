@@ -64,7 +64,7 @@
             namespace: flux-system
           type: Opaque
           data:
-            domain: "{{ lookup('env', 'TRAEFIK_DOMAIN') | b64decode }}"
+            domain: "{{ lookup('env', 'TRAEFIK_DOMAIN') | b64encode }}"
 
     - name: Install FluxCD
       ansible.builtin.command:
