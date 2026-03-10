@@ -225,17 +225,15 @@ pipeline {
           infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])])
         {
           script {
-            // Temporary for ArgoCD migration
-            dir('cluster-apps') {
+            dir('flux-apps') {
               git(
-                url: 'git@github.com:mscreations/cluster-apps.git',
+                url: 'git@github.com:mscreations/flux-apps.git',
                 branch: 'master',
                 credentialsId: 'Github',
                 changelog: false,
                 poll: false
               )
             }
-            // End temp section
             def servers = readFile('servers.txt').trim().split("\\r?\\n")
 
             def control_ips = servers.collect { line ->
@@ -263,14 +261,14 @@ pipeline {
         }
       }
     }
-    stage('Deploy ArgoCD and required secrets for Infisical Access') {
+    stage('Deploy FluxCD and required secrets for Infisical Access') {
       agent { label 'linux' }
       when {
         expression { !params.TEARDOWN }
       }
       steps {
         withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
-        infisicalSecrets: [infisicalSecret(includeImports: true, path: '/argocd', secretValues: [[infisicalKey: 'sshPrivateKey'],[infisicalKey: 'TRAEFIK_DOMAIN']])])
+        infisicalSecrets: [infisicalSecret(includeImports: true, path: '/fluxcd', secretValues: [[infisicalKey: 'sshPrivateKey'],[infisicalKey: 'TRAEFIK_DOMAIN']])])
         {
           withCredentials([
             string(credentialsId: 'InfisicalClientID',
@@ -282,7 +280,7 @@ pipeline {
             script {
               sh("""
                 ansible-playbook -i inventory.ini \
-                  ./ansible/argocd.yaml
+                  ./ansible/fluxcd.yaml
               """)
             }
           }

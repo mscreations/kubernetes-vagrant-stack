@@ -1,0 +1,107 @@
+---
+- name: Deploy FluxCD and required secrets
+  hosts: controlplane[0]
+  become: true
+
+  tasks:
+    - name: Create Infisical namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: infisical
+
+    - name: Create Infisical secret with client credentials
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: universal-auth-credentials
+            namespace: infisical
+          type: Opaque
+          data:
+            clientId: "{{ lookup('env', 'INFISICAL_UNIVERSAL_AUTH_CLIENT_ID') | b64encode }}"
+            clientSecret: "{{ lookup('env', 'INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET') | b64encode }}"
+
+    - name: Create FluxCD namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: flux-system
+
+    - name: Create FluxCD git secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: flux-git-deploy
+            namespace: flux-system
+          type: Opaque
+          stringData:
+            identity: "{{ lookup('env', 'sshPrivateKey') }}"
+            known_hosts: |-
+              github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+              github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+              github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+
+    - name: Create FluxCD Domain secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: domain-config
+            namespace: flux-system
+          type: Opaque
+          data:
+            domain: "{{ lookup('env', 'TRAEFIK_DOMAIN') | b64decode }}"
+
+    - name: Install FluxCD
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/helm
+          - upgrade
+          - --install
+          - --namespace
+          - flux-system
+          - --create-namespace
+          - --kubeconfig
+          - /home/vagrant/.kube/config
+          - flux-operator
+          - oci://ghcr.io/controlplaneio-fluxcd/charts/flux-operator
+
+    - name: Wait for all FluxCD deployments to be ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        namespace: flux-system
+      register: fluxcd_deployments
+      until: >
+        fluxcd_deployments.resources | length > 0 and
+        (
+          fluxcd_deployments.resources
+          | map(attribute='status.availableReplicas')
+          | map('default', 0)
+          | list
+          ==
+          fluxcd_deployments.resources
+          | map(attribute='spec.replicas')
+          | list
+        )
+      retries: 30
+      delay: 10
+
+    - name: Install FluxInstance
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('file', '../flux-apps/clusters/prod/flux/fluxinstance.yaml') | from_yaml_all }}"
