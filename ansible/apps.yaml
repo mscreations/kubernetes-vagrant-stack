@@ -201,7 +201,7 @@
     ######################################################################
     - name: Install latest kustomize
       ansible.builtin.unarchive:
-        src: "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/{{ latest_versions.kustomize }}/kustomize_{{ latest_versions.kustomize }}_linux_amd64.tar.gz"
+        src: "https://github.com/kubernetes-sigs/kustomize/releases/download/{{ latest_versions.kustomize }}/kustomize_{{ latest_versions.kustomize | regex_replace('^kustomize/', '') }}_linux_amd64.tar.gz"
         dest: "{{ bin_dir }}"
         remote_src: true
         mode: '0755'
