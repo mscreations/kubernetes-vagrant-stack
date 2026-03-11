@@ -65,6 +65,7 @@
           type: Opaque
           data:
             domain: "{{ lookup('env', 'TRAEFIK_DOMAIN') | b64encode }}"
+            server_domain: "{{ lookup('env', 'DOMAIN') | b64encode }}"
 
     - name: Install FluxCD
       ansible.builtin.command:

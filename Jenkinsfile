@@ -268,7 +268,8 @@ pipeline {
       }
       steps {
         withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
-        infisicalSecrets: [infisicalSecret(includeImports: true, path: '/fluxcd', secretValues: [[infisicalKey: 'sshPrivateKey'],[infisicalKey: 'TRAEFIK_DOMAIN']])])
+        infisicalSecrets: [infisicalSecret(includeImports: true, path: '/fluxcd', secretValues: [[infisicalKey: 'sshPrivateKey'],[infisicalKey: 'TRAEFIK_DOMAIN']]),
+        infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'DOMAIN']])])
         {
           withCredentials([
             string(credentialsId: 'InfisicalClientID',
