@@ -80,6 +80,7 @@
           - /home/vagrant/.kube/config
           - flux-operator
           - oci://ghcr.io/controlplaneio-fluxcd/charts/flux-operator
+      ignore_errors: true
 
     - name: Wait for all FluxCD deployments to be ready
       kubernetes.core.k8s_info:

@@ -242,6 +242,7 @@
           - calico
           - projectcalico/tigera-operator
       when: mode == "init"
+      ignore_errors: true
 
     - name: Create user init script
       ansible.builtin.copy:
