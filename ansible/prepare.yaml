@@ -43,7 +43,21 @@
         - net.bridge.bridge-nf-call-iptables
         - net.ipv4.ip_forward
 
+    - name: Add NTP Servers
+      ansible.builtin.ini_file:
+        path: /etc/systemd/timesyncd.conf
+        section: Time
+        option: NTP
+        value: "dc01.local.mscreations.net dc02.local.mscreations.net"
+        state: present
+        backup: yes
+      notify: Restart systemd-timesyncd
+
   handlers:
     - name: disable swap
       ansible.builtin.command: swapoff -a
       when: ansible_swaptotal_mb | int > 0
+    - name: Restart systemd-timesyncd
+      ansible.builtin.service:
+        name: systemd-timesyncd
+        state: restarted
