@@ -48,7 +48,7 @@
         path: /etc/systemd/timesyncd.conf
         section: Time
         option: NTP
-        value: "dc01.local.mscreations.net dc02.local.mscreations.net"
+        value: "time.windows.com"
         state: present
         backup: yes
       notify: Restart systemd-timesyncd
