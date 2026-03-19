@@ -31,7 +31,7 @@
             process haproxy
             weight 30
           }
-          global_defs { 
+          global_defs {
             router_id KubernetesVIP
           }
 
@@ -139,8 +139,8 @@
 
     - name: Generate kubeadm ClusterConfiguration
       ansible.builtin.template:
-        src: kubeadm-config.yml.j2
-        dest: /tmp/kubeadm-config.yml
+        src: kubeadm-config.yaml.j2
+        dest: /tmp/kubeadm-config.yaml
         owner: root
         group: root
         mode: '0644'
@@ -148,7 +148,7 @@
 
     - name: Enable encryption-at-rest
       ansible.builtin.copy:
-        dest: "/etc/kubernetes/encryption-config.yml"
+        dest: "/etc/kubernetes/encryption-config.yaml"
         content: |
           apiVersion: apiserver.config.k8s.io/v1
           kind: EncryptionConfiguration
@@ -160,7 +160,7 @@
                 - secretbox:
                     keys:
                       - name: key1
-                        secret: {{ encryption_key }}
+                        secret: {{ lookup('env', 'K8S_ENCRYPTION_AT_REST') }}
                 - identity: {}
         owner: root
         group: root
@@ -169,13 +169,13 @@
 
     - name: Init cluster
       ansible.builtin.shell: |
-        kubeadm init --config /tmp/kubeadm-config.yml --upload-certs
+        kubeadm init --config /tmp/kubeadm-config.yaml --upload-certs
       register: init_cluster
       when: not k8s_ca.stat.exists and mode == "init"
 
     - name: Join cluster
       ansible.builtin.shell: |
-        kubeadm join --config /tmp/kubeadm-config.yml
+        kubeadm join --config /tmp/kubeadm-config.yaml
       register: join_cluster
       throttle: 1
       when: not k8s_ca.stat.exists and mode == "controlplane"
@@ -204,6 +204,13 @@
         - { path: "/home/vagrant/.kube", owner: "vagrant", group: "vagrant" }
         - { path: "/root/.kube", owner: "root", group: "root" }
 
+    - name: Fetch admin.conf for artifacts
+      ansible.builtin.fetch:
+        src: /etc/kubernetes/admin.conf
+        dest: ./artifacts/admin.conf
+        flat: yes
+      when: mode == "init"
+
     - name: Add Calico Helm repo
       kubernetes.core.helm_repository:
         name: projectcalico
@@ -220,19 +227,22 @@
         kubeconfig: /home/vagrant/.kube/config
       when: mode == "init"
 
+      # Cannot use kubernets.core.helm module since it doesn't work with Helm 4 and we need Helm 4 later.
     - name: Install Calico with default Helm values
-      kubernetes.core.helm:
-        name: calico
-        chart_ref: projectcalico/tigera-operator
-        namespace: tigera-operator
-        state: present
-        kubeconfig: /home/vagrant/.kube/config
-        values:
-          installation:
-            registry: mirror.gcr.io
-          calicoctl:
-            image: mirror.gcr.io/calico/ctl
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/helm
+          - upgrade
+          - --install
+          - --namespace
+          - tigera-operator
+          - --create-namespace
+          - --kubeconfig
+          - /home/vagrant/.kube/config
+          - calico
+          - projectcalico/tigera-operator
       when: mode == "init"
+      ignore_errors: true
 
     - name: Create user init script
       ansible.builtin.copy:

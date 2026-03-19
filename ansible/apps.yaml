@@ -17,6 +17,9 @@
       arkade: "https://api.github.com/repos/alexellis/arkade/releases/latest"
       yh: "https://api.github.com/repos/andreazorzetto/yh/releases/latest"
       etcdutl: "https://api.github.com/repos/etcd-io/etcd/releases/latest"
+      flux: "https://api.github.com/repos/fluxcd/flux2/releases/latest"
+      regctl: "https://api.github.com/repos/regclient/regclient/releases/latest"
+      kustomize: "https://api.github.com/repos/kubernetes-sigs/kustomize/releases/latest"
 
   tasks:
     ######################################################################
@@ -70,6 +73,7 @@
     - name: Install latest helm
       ansible.builtin.unarchive:
         src: "https://get.helm.sh/helm-{{ latest_versions.helm }}-linux-amd64.tar.gz"
+        # src: "https://get.helm.sh/helm-v3.19.4-linux-amd64.tar.gz"
         dest: "{{ bin_dir }}"
         include: ["linux-amd64/helm"]
         extra_opts: ["--strip-components=1"]
@@ -182,6 +186,28 @@
         creates: "{{ bin_dir }}/yh"
 
     ######################################################################
+    # Install flux
+    ######################################################################
+    - name: Install latest flux
+      ansible.builtin.unarchive:
+        src: "https://github.com/fluxcd/flux2/releases/download/{{ latest_versions.flux }}/flux_{{ latest_versions.flux | regex_replace('^v','') }}_linux_amd64.tar.gz"
+        dest: "{{ bin_dir }}"
+        remote_src: true
+        mode: '0755'
+        creates: "{{ bin_dir }}/flux"
+
+    ######################################################################
+    # Install kustomize
+    ######################################################################
+    - name: Install latest kustomize
+      ansible.builtin.unarchive:
+        src: "https://github.com/kubernetes-sigs/kustomize/releases/download/{{ latest_versions.kustomize }}/kustomize_{{ latest_versions.kustomize | regex_replace('^kustomize/', '') }}_linux_amd64.tar.gz"
+        dest: "{{ bin_dir }}"
+        remote_src: true
+        mode: '0755'
+        creates: "{{ bin_dir }}/kustomize"
+
+    ######################################################################
     # Install etcdutl
     ######################################################################
     - name: Install latest etcdutl
@@ -193,3 +219,17 @@
         extra_opts: ["--strip-components=1"]
         mode: '0755'
         creates: "{{ bin_dir }}/etcdutl"
+
+    # - name: Install Helm diff plugin
+    #   kubernetes.core.helm_plugin:
+    #     plugin_path: https://github.com/databus23/helm-diff
+    #     state: present
+
+    ######################################################################
+    # Install regctl
+    ######################################################################
+    - name: Install latest regctl
+      ansible.builtin.get_url:
+        url: "https://github.com/regclient/regclient/releases/download/{{ latest_versions.regctl }}/regctl-linux-amd64"
+        dest: "{{ bin_dir }}/regctl"
+        mode: '0755'

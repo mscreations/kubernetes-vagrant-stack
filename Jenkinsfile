@@ -12,20 +12,17 @@ pipeline {
     VAGRANT_INSTALL_LOCAL_PLUGINS=1
     ANSIBLE_FORCE_COLOR = 1
   }
-  triggers {
-    pollSCM('*/2 * * * *')
-  }
   parameters {
-    string(defaultValue: '1.34', name: 'K8S_VERSION', trim: true)
+    string(defaultValue: '1.35', name: 'K8S_VERSION', trim: true)
     booleanParam(name: 'TEARDOWN')
     string(name: 'VAGRANT_EXTRA_ARGS', trim: true)
     booleanParam(name: 'UPDATE_BOX')
     string(defaultValue: '172.29.125', name: 'NETWORK_PREFIX', trim: true)
     string(defaultValue: 'mscreations/ubuntu2404', name: 'VAGRANT_BOX', trim: true)
     string(defaultValue: '3', name: 'CONTROLPLANE_NODES_COUNT', trim: true)
-    string(defaultValue: '4', name: 'CONTROLPLANE_MAX_CPUS', trim: true)
-    string(defaultValue: '4096', name: 'CONTROLPLANE_MAX_MEMORY', trim: true)
-    string(defaultValue: '3', name: 'WORKER_NODES_COUNT', trim: true)
+    string(defaultValue: '8', name: 'CONTROLPLANE_MAX_CPUS', trim: true)
+    string(defaultValue: '8192', name: 'CONTROLPLANE_MAX_MEMORY', trim: true)
+    string(defaultValue: '4', name: 'WORKER_NODES_COUNT', trim: true)
     string(defaultValue: '16', name: 'WORKER_MAX_CPUS', trim: true)
     string(defaultValue: '32768', name: 'WORKER_MAX_MEMORY', trim: true)
   }
@@ -53,7 +50,7 @@ pipeline {
     stage('Generate Servers + Inventory') {
       agent { label 'linux' }
       steps {
-        sh('rm -rf customize')
+        sh('rm -rf *')
         unstash(name: 'SourceFiles')
         sh('chmod +x ./scripts/generate_servers.sh')
         script {
@@ -203,20 +200,16 @@ pipeline {
         expression { !params.TEARDOWN }
       }
       steps {
-        withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
+        withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
           infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'DOMAIN_PASSWORD'],[infisicalKey: 'DOMAIN'],[infisicalKey: 'NEW_SSH_PASSWORD']])]) {
           script {
             sh('''
-              chmod +x ./scripts/deploy_customizations.sh
-              ./scripts/deploy_customizations.sh
-              ansible-galaxy install -r ./ansible/requirements.yml -p /etc/ansible/roles --force
+              chmod +x ./scripts/execute_ansible_folder.sh
+              ./scripts/execute_ansible_folder.sh customize
 
-              ansible-playbook -i inventory.ini \
-                ./ansible/stage1.yml\
-                -e "new_ssh_password=${NEW_SSH_PASSWORD}" \
-                -e "domain_password=${DOMAIN_PASSWORD}" \
-                -e "domain=${DOMAIN}" \
-                -e "k8s_version=${K8S_VERSION}"
+              ansible-galaxy install -r ./ansible/requirements.yaml -p /etc/ansible/roles --force
+
+              ansible-playbook -i inventory.ini ./ansible/stage1.yaml
             ''')
           }
         }
@@ -228,10 +221,19 @@ pipeline {
         expression { !params.TEARDOWN }
       }
       steps {
-        withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw',infisicalUrl: 'https://app.infisical.com'],
-          infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) 
+        withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
+          infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])])
         {
           script {
+            dir('flux-apps') {
+              git(
+                url: 'git@github.com:mscreations/flux-apps.git',
+                branch: 'main',
+                credentialsId: 'Github',
+                changelog: false,
+                poll: false
+              )
+            }
             def servers = readFile('servers.txt').trim().split("\\r?\\n")
 
             def control_ips = servers.collect { line ->
@@ -247,70 +249,127 @@ pipeline {
 
             sh("""
               ansible-playbook -i inventory.ini \
-                ./ansible/stage2_controlplane.yml \
+                ./ansible/stage2_controlplane.yaml \
                 --extra-vars='{
-                  "controlplane_ips":[${control_ips_json}],
-                  "token":"${K8S_TOKEN}",
-                  "certificate_key":"${K8S_CERTIFICATE_KEY}",
-                  "k8s_version":"${K8S_VERSION}",
-                  "encryption_key":"${K8S_ENCRYPTION_AT_REST }"
+                  "controlplane_ips":[${control_ips_json}]
                 }'
-              ansible-playbook -i inventory.ini \
-                ./ansible/stage2_worker.yml \
-                --extra-vars='{
-                  "token":"${K8S_TOKEN}"
-                }'
+              ansible-playbook -i inventory.ini ./ansible/stage2_worker.yaml
             """)
+
+            archiveArtifacts(artifacts: 'ansible/artifacts/admin.conf', fingerprint: true)
           }
         }
       }
     }
-    stage('Deploy k8s Apps') {
+    stage('Deploy FluxCD and required secrets for Infisical Access') {
       agent { label 'linux' }
       when {
         expression { !params.TEARDOWN }
       }
       steps {
         withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
-          infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'K8S_TOKEN'],[infisicalKey: 'K8S_CERTIFICATE_KEY'],[infisicalKey: 'K8S_ENCRYPTION_AT_REST']])]) {
-          script {
-            sh("""
-              ansible-playbook -i inventory.ini \
-                ./ansible/k8s-apps/metallb.yml
-            """)
+        infisicalSecrets: [infisicalSecret(includeImports: true, path: '/fluxcd', secretValues: [[infisicalKey: 'sshPrivateKey'],[infisicalKey: 'TRAEFIK_DOMAIN']]),
+        infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'DOMAIN']])])
+        {
+          withCredentials([
+            string(credentialsId: 'InfisicalClientID',
+            variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_ID'),
+            string(credentialsId: 'InfisicalClientSecret',
+            variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET')
+          ])
+          {
+            script {
+              sh("""
+                ansible-playbook -i inventory.ini \
+                  ./ansible/fluxcd.yaml
+              """)
+            }
           }
         }
       }
     }
-    stage('Ensure Pull Request') {
-      agent { label 'linux' }
-      when {
-        allOf {
-          changeset "**/*"
-          expression { !params.TEARDOWN }
-        }
-      }
-      steps {
-        withCredentials([string(credentialsId: 'GithubToken', variable: 'GITHUB_TOKEN')]) {
-          sh '''
-            set -e
+    // Disable rest of pipeline for conversion to ArgoCD deployment
 
-            existing_pr=$(gh pr list --base main --head dev --json number --jq '.[0].number')
+    // stage('Deploy Secrets Manager + Core Apps') {
+    //   agent { label 'linux' }
+    //   when {
+    //     expression { !params.TEARDOWN }
+    //   }
+    //   steps {
+    //     withInfisical(configuration: [infisicalCredentialId: 'infisical',infisicalEnvironmentSlug: 'prod',infisicalProjectSlug: 'homelab-b-h-sw'],
+    //     infisicalSecrets: [infisicalSecret(includeImports: true, path: '/', secretValues: [[infisicalKey: 'CERT_EMAIL'],[infisicalKey: 'TRAEFIK_DOMAIN']])])
+    //     {
+    //       withCredentials([
+    //         string(credentialsId: 'InfisicalClientID',
+    //         variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_ID'),
+    //         string(credentialsId: 'InfisicalClientSecret',
+    //         variable: 'INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET')])
+    //       {
+    //         script {
+    //           sh("""
+    //             # Install Infisical Operator for cluster secret management
+    //             ansible-playbook -i inventory.ini ./ansible/k8s-apps/infisical.yaml
 
-            if [ -n "$existing_pr" ]; then
-              echo "PR #$existing_pr exists. Commenting..."
-              gh pr comment $existing_pr --body "✅ Jenkins build #$BUILD_NUMBER succeeded for commit $(git rev-parse --short HEAD)"
-            else
-              echo "No PR found. Creating a new one..."
-              gh pr create \
-                --base main \
-                --head dev \
-                --title "Promote dev to main" \
-                --body "Automated PR created by Jenkins after successful build #$BUILD_NUMBER"
-            fi
-          '''
-        }
-      }
-    }
+    //             chmod +x ./scripts/execute_ansible_folder.sh
+    //             ./scripts/execute_ansible_folder.sh ansible/k8s-apps
+    //           """)
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
+    // stage('Deploy Apps to ArgoCD') {
+    //   agent { label 'linux' }
+    //   when {
+    //     expression { !params.TEARDOWN }
+    //   }
+    //   steps {
+    //     script {
+    //       dir('cluster-apps') {
+    //         git(
+    //           url: 'git@github.com:mscreations/cluster-apps.git',
+    //           branch: 'master',
+    //           credentialsId: 'Github',
+    //           changelog: false,
+    //           poll: false
+    //         )
+    //       }
+
+    //       sh("""
+    //         ansible-playbook -i inventory.ini ./ansible/argocd.yaml
+    //       """)
+    //     }
+    //   }
+    // }
+    // stage('Ensure Pull Request') {
+    //   agent { label 'linux' }
+    //   when {
+    //     allOf {
+    //       changeset "**/*"
+    //       expression { !params.TEARDOWN }
+    //     }
+    //   }
+    //   steps {
+    //     withCredentials([string(credentialsId: 'GithubToken', variable: 'GITHUB_TOKEN')]) {
+    //       sh '''
+    //         set -e
+
+    //         existing_pr=$(gh pr list --base main --head dev --json number --jq '.[0].number')
+
+    //         if [ -n "$existing_pr" ]; then
+    //           echo "PR #$existing_pr exists. Commenting..."
+    //           gh pr comment $existing_pr --body "✅ Jenkins build #$BUILD_NUMBER succeeded for commit $(git rev-parse --short HEAD)"
+    //         else
+    //           echo "No PR found. Creating a new one..."
+    //           gh pr create \
+    //             --base main \
+    //             --head dev \
+    //             --title "Promote dev to main" \
+    //             --body "Automated PR created by Jenkins after successful build #$BUILD_NUMBER"
+    //         fi
+    //       '''
+    //     }
+    //   }
+    // }
   }
 }
